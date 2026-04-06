@@ -48,30 +48,37 @@
     #authShell{position:absolute;inset:0;z-index:300;display:flex;flex-direction:column;background:#fff;transition:opacity .4s,transform .4s}
     #authShell.out{opacity:0;transform:scale(.96);pointer-events:none}
 
-    /* Splash */
+    /* Splash – clean white launch */
     #splashScreen{
       flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-      background:linear-gradient(160deg,#5b6cff 0%,#7c8bff 45%,#27c2a3 100%);
-      padding:40px 28px;text-align:center;
+      background:#fff;padding:48px 32px;
     }
+    /* Phase 1: just logo + spinner */
+    .splash-launch{display:flex;flex-direction:column;align-items:center;gap:22px;width:100%}
     .splash-logo{
-      width:88px;height:88px;border-radius:28px;background:rgba(255,255,255,.2);
-      border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;
-      font-size:42px;margin-bottom:22px;box-shadow:0 20px 50px rgba(0,0,0,.2);
-      animation:pop .65s cubic-bezier(.34,1.56,.64,1) both;
+      width:80px;height:80px;border-radius:24px;
+      background:linear-gradient(135deg,var(--primary),#7c8bff 60%,var(--accent));
+      display:flex;align-items:center;justify-content:center;
+      color:#fff;font-size:34px;font-weight:900;letter-spacing:-.04em;
+      box-shadow:0 16px 40px rgba(91,108,255,.3);
+      animation:pop .55s cubic-bezier(.34,1.56,.64,1) both;
     }
     @keyframes pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
-    .splash-title{font-size:34px;font-weight:900;color:#fff;letter-spacing:-.05em;margin-bottom:8px}
-    .splash-sub{font-size:15px;color:rgba(255,255,255,.82);line-height:1.5;margin-bottom:36px}
+    .launch-spinner{width:28px;height:28px;border-radius:50%;border:2.5px solid var(--line);border-top-color:var(--primary);animation:spin .7s linear infinite}
+    /* Phase 2: full content, single column, fades in */
+    .splash-content{display:none;flex-direction:column;align-items:center;width:100%;opacity:0;transition:opacity .5s ease}
+    .splash-content.visible{opacity:1}
+    .splash-wordmark{font-size:32px;font-weight:900;letter-spacing:-.05em;color:var(--text);margin-bottom:6px}
+    .splash-tagline{font-size:15px;color:var(--muted);margin-bottom:36px;text-align:center;line-height:1.5}
     .splash-feats{display:flex;flex-direction:column;gap:10px;width:100%;margin-bottom:36px}
-    .sf{display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:13px 16px;text-align:left}
-    .sf-ico{font-size:22px;flex:none}
-    .sf-t{font-size:13px;font-weight:700;color:#fff;line-height:1.3}
-    .sf-s{font-size:11px;font-weight:400;color:rgba(255,255,255,.75);margin-top:2px}
-    .splash-btn{width:100%;padding:17px;border:none;border-radius:18px;background:#fff;color:#3443c7;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 10px 28px rgba(0,0,0,.2);letter-spacing:-.02em;transition:transform .15s}
+    .sf{display:flex;align-items:flex-start;gap:14px;padding:14px 16px;background:var(--bg);border:1px solid var(--line);border-radius:16px;text-align:left}
+    .sf-ico{font-size:22px;flex:none;margin-top:1px}
+    .sf-t{font-size:13px;font-weight:700;color:var(--text);line-height:1.3}
+    .sf-s{font-size:12px;font-weight:400;color:var(--muted);margin-top:3px}
+    .splash-btn{width:100%;padding:17px;border:none;border-radius:18px;background:var(--primary);color:#fff;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 10px 28px rgba(91,108,255,.3);letter-spacing:-.02em;transition:transform .15s;margin-bottom:12px}
     .splash-btn:active{transform:scale(.98)}
-    .splash-link{margin-top:14px;font-size:12px;color:rgba(255,255,255,.7)}
-    .splash-link a{color:#fff;font-weight:800;text-decoration:none}
+    .splash-link{font-size:13px;color:var(--muted);text-align:center}
+    .splash-link a{color:var(--primary);font-weight:800;text-decoration:none}
 
     /* Auth form */
     #authScreen{flex:1;display:none;flex-direction:column}
@@ -239,7 +246,7 @@
     .empty-sub{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:20px}
 
     /* ── MAP ── */
-    .map-wrap{border:1px solid var(--line);border-radius:18px;overflow:hidden;height:320px;margin-bottom:12px}
+    .map-wrap{border:1px solid var(--line);border-radius:18px;overflow:hidden;height:380px;margin-bottom:12px}
     #leaflet-map{width:100%;height:100%}
     .leaflet-control-zoom{border:none!important;box-shadow:0 1px 4px rgba(0,0,0,.3)!important;border-radius:2px!important}
     .leaflet-control-zoom a{width:28px!important;height:28px!important;line-height:28px!important;font-size:16px!important;color:#666!important;background:#fff!important;border:none!important}
@@ -364,6 +371,104 @@
     .nav-badge{position:absolute;top:4px;right:18px;width:16px;height:16px;border-radius:50%;background:var(--danger);color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
 
     .small{font-size:11px;color:var(--muted);line-height:1.4}
+
+    /* ── Dog photo avatar (circular, used on cards) ── */
+    .dog-avatar{width:44px;height:44px;border-radius:14px;object-fit:cover;flex:none;border:2px solid var(--line)}
+    .dog-avatar-wrap{position:relative;flex:none}
+    .dog-avatar-wrap .verified-dot{position:absolute;bottom:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:#4285F4;border:2px solid #fff;display:flex;align-items:center;justify-content:center}
+    .dog-avatar-wrap .verified-dot svg{width:8px;height:8px;fill:#fff}
+
+    /* ── Verified badge ── */
+    .verified-badge{display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,#4285F4,#34a0f7);color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;letter-spacing:.02em}
+    .verified-badge svg{width:10px;height:10px;fill:#fff}
+
+    /* ── Rating stars ── */
+    .rating-row{display:flex;align-items:center;gap:6px;margin-top:6px}
+    .stars{display:flex;gap:2px}
+    .star{font-size:13px;cursor:pointer;transition:.1s}
+    .star.on{filter:none} .star.off{filter:grayscale(1) opacity(.4)}
+    .rating-count{font-size:11px;color:var(--muted);font-weight:600}
+    .rate-modal{position:absolute;inset:0;z-index:600;background:rgba(26,32,51,.55);backdrop-filter:blur(4px);display:none;align-items:flex-end}
+    .rate-modal.on{display:flex}
+    .rate-sheet{background:#fff;border-radius:28px 28px 0 0;padding:24px;width:100%;box-shadow:0 -8px 40px rgba(0,0,0,.18)}
+    .rate-sheet h3{font-size:18px;font-weight:900;margin-bottom:6px}
+    .rate-sheet p{font-size:13px;color:var(--muted);margin-bottom:18px}
+    .rate-stars-big{display:flex;justify-content:center;gap:10px;margin-bottom:18px}
+    .rate-stars-big .star{font-size:36px}
+
+    /* ── Safety modal — must be above Leaflet (z-index 400+) ── */
+    .safety-modal{position:absolute;inset:0;z-index:600;background:rgba(26,32,51,.55);backdrop-filter:blur(4px);display:none;align-items:flex-end}
+    .safety-modal.on{display:flex}
+    .safety-sheet{background:#fff;border-radius:28px 28px 0 0;padding:0;width:100%;max-height:88%;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,.18)}
+    .safety-header{padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .safety-header h3{font-size:18px;font-weight:900}
+    .safety-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);padding:4px}
+    .safety-body{padding:0 20px 28px;display:flex;flex-direction:column;gap:12px}
+    .safety-tip{background:var(--bg);border-radius:16px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px;border-left:4px solid var(--primary)}
+    .safety-tip.green{border-left-color:var(--accent)}
+    .safety-tip.yellow{border-left-color:var(--warning)}
+    .safety-tip.red{border-left-color:var(--danger)}
+    .stip-ico{font-size:22px;flex:none;margin-top:1px}
+    .stip-title{font-size:13px;font-weight:800;margin-bottom:3px}
+    .stip-text{font-size:12px;color:var(--muted);line-height:1.45}
+
+    /* ── Feedback button & modal ── */
+    .fab-feedback{
+      position:absolute;bottom:88px;right:14px;z-index:90;
+      width:46px;height:46px;border-radius:999px;
+      background:linear-gradient(135deg,var(--primary),var(--accent));
+      border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+      box-shadow:0 6px 20px rgba(91,108,255,.4);transition:.15s;
+    }
+    .fab-feedback:active{transform:scale(.94)}
+    .fab-feedback svg{width:20px;height:20px;stroke:#fff;fill:none}
+    .feedback-modal{position:absolute;inset:0;z-index:600;background:rgba(26,32,51,.55);backdrop-filter:blur(4px);display:none;align-items:flex-end}
+    .feedback-modal.on{display:flex}
+    .feedback-sheet{background:#fff;border-radius:28px 28px 0 0;padding:24px;width:100%;box-shadow:0 -8px 40px rgba(0,0,0,.18)}
+    .feedback-sheet h3{font-size:18px;font-weight:900;margin-bottom:6px}
+    .feedback-sheet p{font-size:13px;color:var(--muted);margin-bottom:14px}
+    .fb-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+    .fb-opt{padding:11px 10px;border-radius:14px;border:1.5px solid var(--line);background:#fff;font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:.15s}
+    .fb-opt.sel{border-color:var(--primary);background:var(--primary-soft);color:var(--primary)}
+    .fb-textarea{width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:14px;font-size:14px;outline:none;resize:none;min-height:80px;margin-bottom:14px;font-family:inherit}
+    .fb-textarea:focus{border-color:var(--primary)}
+
+    /* ── Onboarding safety screen ── */
+    .ob-safety-header{background:linear-gradient(135deg,#fff5e3,#fff0f0);border-radius:18px;padding:18px;margin-bottom:18px;text-align:center}
+    .ob-safety-ico{font-size:44px;margin-bottom:10px}
+    .ob-safety-title{font-size:17px;font-weight:900;margin-bottom:4px}
+    .ob-safety-sub{font-size:13px;color:var(--muted);line-height:1.4}
+    .ob-tip{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:14px;background:var(--bg);border-left:3px solid var(--primary);margin-bottom:8px}
+    .ob-tip.gr{border-left-color:var(--accent)}
+    .ob-tip.ye{border-left-color:var(--warning)}
+    .ob-tip.re{border-left-color:var(--danger)}
+    .ob-tip-ico{font-size:18px;flex:none;margin-top:1px}
+    .ob-tip-text{font-size:12px;color:var(--muted);line-height:1.4}
+    .ob-tip-text strong{color:var(--text);font-weight:800}
+
+    /* ── Verification step ── */
+    .verify-options{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+    .verify-opt{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1.5px solid var(--line);border-radius:16px;background:#fff;cursor:pointer;transition:.15s;text-align:left}
+    .verify-opt:hover,.verify-opt.sel{border-color:var(--primary);background:var(--primary-soft)}
+    .verify-opt-ico{width:38px;height:38px;border-radius:12px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
+    .verify-opt-label{font-size:14px;font-weight:700;margin-bottom:2px}
+    .verify-opt-sub{font-size:11px;color:var(--muted)}
+
+    /* ── Side safety button (floating ! pill) ── */
+    .side-safety{
+      position:absolute;right:-1px;top:50%;transform:translateY(-50%);z-index:80;
+      writing-mode:vertical-lr;
+      background:linear-gradient(180deg,var(--warning),#ff9500);
+      color:#fff;font-size:11px;font-weight:900;letter-spacing:.08em;
+      padding:14px 7px;border-radius:10px 0 0 10px;
+      cursor:pointer;border:none;
+      box-shadow:-3px 0 12px rgba(255,149,0,.35);
+      display:none;gap:6px;align-items:center;
+      transition:.15s;
+    }
+    .side-safety.on{display:flex}
+    .side-safety:hover{padding-right:10px}
+    .side-safety-ico{writing-mode:horizontal-tb;font-size:14px}
   </style>
 </head>
 <body>
@@ -382,25 +487,33 @@
   <!-- ══ AUTH SHELL ══ -->
   <div id="authShell">
 
-    <!-- SPLASH -->
+    <!-- SPLASH: white launch screen -->
     <div id="splashScreen">
-      <div class="splash-logo">🐾</div>
-      <h1 class="splash-title">PackWalk</h1>
-      <p class="splash-sub">Find dog owners nearby.<br>Walk together. Safer. Easier.</p>
-      <div class="splash-feats">
-        <div class="sf"><span class="sf-ico">🗺️</span><div><div class="sf-t">Real-time map of nearby walkers</div><div class="sf-s">See who's out right now in Neukölln</div></div></div>
-        <div class="sf"><span class="sf-ico">🐕</span><div><div class="sf-t">Dog profiles & matching</div><div class="sf-s">Find dogs your pup will get along with</div></div></div>
-        <div class="sf"><span class="sf-ico">🔒</span><div><div class="sf-t">Safety first — public meetups only</div><div class="sf-s">Verified profiles, no home address shown</div></div></div>
+      <!-- Phase 1: just logo + spinner, centered -->
+      <div class="splash-launch" id="splashLaunch">
+        <div class="splash-logo">P</div>
+        <div class="launch-spinner"></div>
       </div>
-      <button class="splash-btn" onclick="showAuth()">Get started</button>
-      <p class="splash-link">Already have an account? <a href="#" onclick="showAuth('login');return false">Sign in</a></p>
+      <!-- Phase 2: single-column content, fades in -->
+      <div class="splash-content" id="splashContent" style="display:none">
+        <div class="splash-logo" style="margin-bottom:14px">P</div>
+        <div class="splash-wordmark">PackWalk</div>
+        <div class="splash-tagline">Find dog owners nearby.<br>Walk together. Safer. Easier.</div>
+        <div class="splash-feats">
+          <div class="sf"><span class="sf-ico">🗺️</span><div><div class="sf-t">Real-time map of nearby walkers</div><div class="sf-s">See who's out right now in your neighbourhood</div></div></div>
+          <div class="sf"><span class="sf-ico">🐕</span><div><div class="sf-t">Dog profiles & matching</div><div class="sf-s">Find dogs your pup will actually get along with</div></div></div>
+          <div class="sf"><span class="sf-ico">🔒</span><div><div class="sf-t">Safety first — public meetups only</div><div class="sf-s">Verified profiles. No home address ever shared.</div></div></div>
+        </div>
+        <button class="splash-btn" onclick="showAuth()">Get started — it's free</button>
+        <p class="splash-link">Already have an account? <a href="#" onclick="showAuth('login');return false">Sign in</a></p>
+      </div>
     </div>
 
     <!-- AUTH FORM -->
     <div id="authScreen">
       <div class="auth-header">
         <button class="auth-back" onclick="showSplash()">← Back</button>
-        <div class="auth-logo">🐾</div>
+        <div class="auth-logo" style="font-size:18px;font-weight:900;letter-spacing:-.03em">P</div>
         <div class="auth-title">Welcome to PackWalk</div>
         <div class="auth-sub">Neukölln's dog walking community</div>
       </div>
@@ -449,6 +562,7 @@
       <div class="ob-pip done" id="pip0"></div>
       <div class="ob-pip" id="pip1"></div>
       <div class="ob-pip" id="pip2"></div>
+      <div class="ob-pip" id="pip3"></div>
     </div>
 
     <!-- Step 0: Name -->
@@ -488,18 +602,48 @@
       <button class="ob-skip" onclick="obNext(2)">Skip for now</button>
     </div>
 
-    <!-- Step 2: Location permission -->
+    <!-- Step 2: 🛡️ Safety guidance (NEW — shown after registration) -->
     <div class="ob-step" id="ob2">
-      <div class="ob-emoji">📍</div>
-      <div class="ob-title">Allow location access</div>
-      <div class="ob-sub">So you can see dog owners near you — and they can find you.</div>
-      <div class="ob-card">
-        <div class="geo-point"><div class="geo-dot"></div><div class="geo-txt">Your <strong>exact address</strong> is never shared. Only your approximate neighbourhood is visible to others.</div></div>
-        <div class="geo-point"><div class="geo-dot"></div><div class="geo-txt">You control your <strong>visibility radius</strong> — hide yourself anytime in settings.</div></div>
-        <div class="geo-point"><div class="geo-dot"></div><div class="geo-txt">Location is only active <strong>while the app is open</strong>.</div></div>
+      <div class="ob-safety-header">
+        <div class="ob-safety-ico">🛡️</div>
+        <div class="ob-safety-title">Before you start walking</div>
+        <div class="ob-safety-sub">PackWalk connects strangers. Here's how to stay safe and have a great experience.</div>
       </div>
-      <button class="ob-next" onclick="finishOnboard()" style="background:linear-gradient(135deg,var(--primary),var(--accent))">📍 Allow location & continue</button>
-      <button class="ob-skip" onclick="finishOnboard()">Not now</button>
+      <div style="overflow-y:auto;flex:1;padding-bottom:4px">
+        <div class="ob-tip"><div class="ob-tip-ico">📍</div><div class="ob-tip-text"><strong>Always meet in public</strong> — parks, café entrances, squares. Never at someone's home for a first meeting.</div></div>
+        <div class="ob-tip gr"><div class="ob-tip-ico">👁️</div><div class="ob-tip-text"><strong>Check the profile first</strong> — review photos, social links, ratings, and verified badge before going.</div></div>
+        <div class="ob-tip ye"><div class="ob-tip-ico">🐕</div><div class="ob-tip-text"><strong>Dog etiquette</strong> — let dogs sniff from a distance first. Ask before letting them greet. Keep leash on until both dogs are calm.</div></div>
+        <div class="ob-tip"><div class="ob-tip-ico">💬</div><div class="ob-tip-text"><strong>Chat before meeting</strong> — exchange a few messages first. Any hesitation — trust your gut.</div></div>
+        <div class="ob-tip re"><div class="ob-tip-ico">🚨</div><div class="ob-tip-text"><strong>If something feels wrong</strong> — leave calmly. Use the Report button. Your safety always comes first.</div></div>
+        <div class="ob-tip ye"><div class="ob-tip-ico">📱</div><div class="ob-tip-text"><strong>Tell someone where you're going</strong> — share your meetup spot before heading out, especially for a first meeting.</div></div>
+      </div>
+      <button class="ob-next" style="margin-top:14px" onclick="obNext(3)">Understood — let's go 🐾</button>
+    </div>
+
+    <!-- Step 3: Verification (NEW) -->
+    <div class="ob-step" id="ob3">
+      <div class="ob-emoji">✅</div>
+      <div class="ob-title">Get verified</div>
+      <div class="ob-sub">Verified users get more trust, more walk invites. Takes 1 minute.</div>
+      <div class="verify-options">
+        <div class="verify-opt" onclick="selVerify(this)">
+          <div class="verify-opt-ico">📧</div>
+          <div><div class="verify-opt-label">Verify email</div><div class="verify-opt-sub">Check your inbox for a confirmation link</div></div>
+        </div>
+        <div class="verify-opt" onclick="selVerify(this)">
+          <div class="verify-opt-ico">📱</div>
+          <div><div class="verify-opt-label">Verify phone number</div><div class="verify-opt-sub">Receive a one-time SMS code</div></div>
+        </div>
+        <div class="verify-opt" onclick="selVerify(this)">
+          <div class="verify-opt-ico">📷</div>
+          <div><div class="verify-opt-label">Upload ID photo</div><div class="verify-opt-sub">Stored securely, never shown to other users</div></div>
+        </div>
+      </div>
+      <div style="background:var(--accent-soft);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#13846d;line-height:1.5">
+        <strong>Why verify?</strong> Verified users get a blue badge, appear higher in search, and other owners feel safer joining their walks.
+      </div>
+      <button class="ob-next" style="background:linear-gradient(135deg,var(--primary),var(--accent))" onclick="finishOnboard()">✓ Start with PackWalk</button>
+      <button class="ob-skip" onclick="finishOnboard()">Skip for now</button>
     </div>
   </div>
 
@@ -543,7 +687,7 @@
     <div class="top">
       <div class="brand-row">
         <div class="brand">
-          <div class="logo">🐾</div>
+          <div class="logo">P</div>
           <div class="brand-text"><h1>PackWalk</h1><p>Walk together. Safer. Easier.</p></div>
         </div>
         <div class="status-pill" id="nearbyPill">3 walkers nearby</div>
@@ -588,15 +732,25 @@
             <div class="qcard" onclick="showScreen('dogs')"><div class="qico ye">
               <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
             </div><h4>Dog profiles</h4><p>Browse & match by personality</p></div>
-            <div class="qcard" onclick="showScreen('profile')"><div class="qico bl">
-              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            </div><h4>My profile</h4><p>Settings, radius, visibility</p></div>
+            <div class="qcard" onclick="openSafety()"><div class="qico bl">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div><h4>Safety guide</h4><p>Tips for safe dog walks & meetups</p></div>
           </div>
           <div class="sh"><h2>Nearby right now</h2><a href="#" onclick="showScreen('map');return false">Open map</a></div>
           <div class="card">
             <div class="card-top">
-              <div class="avatar av-orange">A</div>
-              <div><h3>Anna & Luna</h3><p style="margin:0;font-size:12px;color:var(--muted)">Körnerpark · Today · 18:30</p></div>
+              <div class="dog-avatar-wrap">
+                <img class="dog-avatar" src="https://picsum.photos/seed/dog200/88/88" onerror="this.outerHTML='<div class=\'avatar av-orange\'>A</div>'" alt="Luna"/>
+                <div class="verified-dot"><svg viewBox="0 0 8 8" fill="#fff"><path d="M1 4l2 2 4-4"/></svg></div>
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+                  <h3 style="margin:0">Anna & Luna</h3>
+                  <span class="verified-badge"><svg viewBox="0 0 12 12" style="width:9px;height:9px;fill:#fff"><path d="M6 1l1.5 2.5L10 4l-2 2 .5 3L6 7.5 3.5 9l.5-3L2 4l2.5-.5z"/></svg>Verified</span>
+                </div>
+                <p style="margin:0;font-size:12px;color:var(--muted)">Körnerpark · Today · 18:30</p>
+                <div class="rating-row"><div class="stars"><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span><span class="star off">⭐</span></div><span class="rating-count">4.0 · 12 walks</span></div>
+              </div>
             </div>
             <div class="tags"><span class="tag blue">Small dog</span><span class="tag green">Friendly</span><span class="tag yellow">0.8 km</span></div>
             <p>Calm evening walk. Instagram & Telegram linked.</p>
@@ -604,8 +758,16 @@
           </div>
           <div class="card">
             <div class="card-top">
-              <div class="avatar av-teal">M</div>
-              <div><h3>Max & Bruno</h3><p style="margin:0;font-size:12px;color:var(--muted)">Volkspark Hasenheide · Today · 19:00</p></div>
+              <div class="dog-avatar-wrap">
+                <img class="dog-avatar" src="https://picsum.photos/seed/dog237/88/88" onerror="this.outerHTML='<div class=\'avatar av-teal\'>M</div>'" alt="Bruno"/>
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+                  <h3 style="margin:0">Max & Bruno</h3>
+                </div>
+                <p style="margin:0;font-size:12px;color:var(--muted)">Volkspark Hasenheide · Today · 19:00</p>
+                <div class="rating-row"><div class="stars"><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span></div><span class="rating-count">4.8 · 7 walks</span></div>
+              </div>
             </div>
             <div class="tags"><span class="tag blue">Medium dog</span><span class="tag green">Playful</span><span class="tag yellow">1.4 km</span></div>
             <p>Group walk with 2 more owners.</p>
@@ -626,8 +788,8 @@
         </div>
         <div class="card" style="margin-top:12px">
           <h3>🟠 10 curated meetup spots</h3>
-          <p>Parks, café entrances & squares — tap any orange number for details.</p>
-          <button class="btn btn-accent" onclick="showScreen('walks')">See matching walks</button>
+          <p>Neukölln parks, café entrances & squares — tap any orange marker for details.</p>
+          <button class="btn btn-accent" style="margin-top:8px" onclick="showScreen('walks')">See matching walks</button>
         </div>
       </section>
 
@@ -636,13 +798,32 @@
         <div class="sh"><h2>Available walks</h2><a href="#" onclick="showScreen('create');return false">+ Create</a></div>
         <div id="joinMessage"></div>
         <div class="card">
-          <div class="card-top"><div class="avatar av-purple">S</div><div><h3>Sophie & Milo</h3><p style="margin:0;font-size:12px;color:var(--muted)">Tempelhofer Feld · Tomorrow · 09:00</p></div></div>
+          <div class="card-top">
+            <div class="dog-avatar-wrap">
+              <img class="dog-avatar" src="https://picsum.photos/seed/dog177/88/88" onerror="this.outerHTML='<div class=\'avatar av-purple\'>S</div>'" alt="Milo"/>
+              <div class="verified-dot"><svg viewBox="0 0 8 8" fill="#fff"><path d="M1 4l2 2 4-4"/></svg></div>
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><h3 style="margin:0">Sophie & Milo</h3><span class="verified-badge"><svg viewBox="0 0 12 12" style="width:9px;height:9px;fill:#fff"><path d="M6 1l1.5 2.5L10 4l-2 2 .5 3L6 7.5 3.5 9l.5-3L2 4l2.5-.5z"/></svg>Verified</span></div>
+              <p style="margin:0;font-size:12px;color:var(--muted)">Tempelhofer Feld · Tomorrow · 09:00</p>
+              <div class="rating-row"><div class="stars"><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span><span class="star off">⭐</span></div><span class="rating-count">4.2 · 5 walks</span></div>
+            </div>
+          </div>
           <div class="tags"><span class="tag blue">Large dog</span><span class="tag green">Social</span><span class="tag yellow">Morning</span></div>
           <p>Verified profile. Instagram linked. Calm public walk routes.</p>
           <div class="row"><button class="btn btn-solid" onclick="openConfirm('Sophie & Milo','Tempelhofer Feld – north entrance','Sophie & Milo · Tomorrow 09:00 · Large dog · Social')">Join walk</button><button class="btn btn-soft" onclick="openConversation('Sophie & Milo')">Message</button></div>
         </div>
         <div class="card">
-          <div class="card-top"><div class="avatar av-orange">J</div><div><h3>Julia & Coco</h3><p style="margin:0;font-size:12px;color:var(--muted)">Richardplatz · Today · 20:00</p></div></div>
+          <div class="card-top">
+            <div class="dog-avatar-wrap">
+              <img class="dog-avatar" src="https://picsum.photos/seed/dog325/88/88" onerror="this.outerHTML='<div class=\'avatar av-orange\'>J</div>'" alt="Coco"/>
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><h3 style="margin:0">Julia & Coco</h3></div>
+              <p style="margin:0;font-size:12px;color:var(--muted)">Richardplatz · Today · 20:00</p>
+              <div class="rating-row"><div class="stars"><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span><span class="star off">⭐</span><span class="star off">⭐</span></div><span class="rating-count">3.5 · 3 walks</span></div>
+            </div>
+          </div>
           <div class="tags"><span class="tag blue">Small dog</span><span class="tag green">Shy</span><span class="tag yellow">Evening</span></div>
           <p>One-to-one walk. Telegram linked.</p>
           <div class="row"><button class="btn btn-solid" onclick="openConfirm('Julia & Coco','Richardplatz – fountain','Julia & Coco · Today 20:00 · Small dog · Shy')">Join walk</button><button class="btn btn-soft" onclick="openConversation('Julia & Coco')">Message</button></div>
@@ -764,15 +945,34 @@
           <div class="card-top">
             <div class="avatar av-me" style="width:56px;height:56px;font-size:22px;border-radius:18px">A</div>
             <div>
-              <h3>Anya · Neukölln</h3>
-              <p>Verified email · Public meetups only</p>
-              <div class="tags" style="margin:6px 0 0"><span class="tag blue">Small dog</span><span class="tag green">Calm</span><span class="tag yellow">Evening walks</span></div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+                <h3 style="margin:0">Anya · Neukölln</h3>
+                <span class="verified-badge"><svg viewBox="0 0 12 12" style="width:10px;height:10px;fill:#fff"><path d="M6 1l1.5 2.5L10 4l-2 2 .5 3L6 7.5 3.5 9l.5-3L2 4l2.5-.5z"/></svg>Verified</span>
+              </div>
+              <p style="font-size:12px;color:var(--muted);margin-bottom:4px">Verified email · Public meetups only</p>
+              <div class="rating-row" style="margin-top:0"><div class="stars"><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span><span class="star off">⭐</span></div><span class="rating-count">4.3 · 8 walks</span></div>
+              <div class="tags" style="margin:8px 0 0"><span class="tag blue">Small dog</span><span class="tag green">Calm</span><span class="tag yellow">Evening walks</span></div>
             </div>
           </div>
           <div class="socials">
             <a class="social-link" href="#">Instagram</a>
             <a class="social-link" href="#">Telegram</a>
             <a class="social-link" href="#">TikTok</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>⭐ Rate a recent walk</h3>
+          <p>Completed walks — tap to leave a rating for your walk partner.</p>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border-radius:14px">
+              <div style="font-size:13px;font-weight:700">Anna & Luna · Yesterday</div>
+              <button class="btn btn-soft" style="width:auto;padding:7px 14px;font-size:12px" onclick="openRate('Anna & Luna')">Rate</button>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border-radius:14px">
+              <div style="font-size:13px;font-weight:700">Max & Bruno · Mon</div>
+              <div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:var(--muted)">Rated</span><span>⭐⭐⭐⭐⭐</span></div>
+            </div>
           </div>
         </div>
 
@@ -799,7 +999,10 @@
         <div class="card">
           <h3>🛡️ Safety</h3>
           <p>Exact home address is never shown. Only public meetup points are visible in the app.</p>
-          <button class="btn btn-warning" style="margin-top:6px">Report strange behaviour</button>
+          <div class="row" style="margin-top:10px">
+            <button class="btn btn-soft" onclick="openSafety()">Safety guide</button>
+            <button class="btn btn-warning">Report user</button>
+          </div>
         </div>
         <div class="card">
           <h3>🚪 Account</h3>
@@ -845,29 +1048,130 @@
     </nav>
 
   </div><!-- /appWrapper -->
+  <!-- SAFETY MODAL -->
+  <div class="safety-modal" id="safetyModal" onclick="if(event.target===this)closeSafety()">
+    <div class="safety-sheet">
+      <div class="safety-header">
+        <h3>🛡️ Safety Guide</h3>
+        <button class="safety-close" onclick="closeSafety()">×</button>
+      </div>
+      <div class="safety-body">
+        <div class="safety-tip">
+          <div class="stip-ico">📍</div>
+          <div><div class="stip-title">Always choose public meetup spots</div><div class="stip-text">Meet at the marked spots — parks, café entrances, squares. Never at someone's home for the first meeting.</div></div>
+        </div>
+        <div class="safety-tip green">
+          <div class="stip-ico">👁️</div>
+          <div><div class="stip-title">Check the profile before going</div><div class="stip-text">Review social links, photos, and past walk ratings. Verified users have a blue badge — prioritise them.</div></div>
+        </div>
+        <div class="safety-tip yellow">
+          <div class="stip-ico">🐕</div>
+          <div><div class="stip-title">Dog interaction etiquette</div><div class="stip-text">Let dogs sniff from a distance first. Keep the leash until both dogs are clearly comfortable. Ask before letting them greet.</div></div>
+        </div>
+        <div class="safety-tip green">
+          <div class="stip-ico">💬</div>
+          <div><div class="stip-title">Chat before meeting</div><div class="stip-text">Exchange a few messages first. Any hesitation — trust your gut and reschedule.</div></div>
+        </div>
+        <div class="safety-tip red">
+          <div class="stip-ico">🚨</div>
+          <div><div class="stip-title">If something feels wrong</div><div class="stip-text">Leave calmly. Use the "Report" button on any profile. Your safety always comes first.</div></div>
+        </div>
+        <div class="safety-tip yellow">
+          <div class="stip-ico">📱</div>
+          <div><div class="stip-title">Tell someone where you're going</div><div class="stip-text">Share your meetup spot with a friend or family member before heading out, especially for a first meeting.</div></div>
+        </div>
+        <button class="btn btn-solid" style="margin-top:4px" onclick="closeSafety()">Got it — stay safe 🐾</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RATE WALK MODAL -->
+  <div class="rate-modal" id="rateModal" onclick="if(event.target===this)closeRate()">
+    <div class="rate-sheet">
+      <h3>⭐ Rate this walk</h3>
+      <p id="rateWalkName">How was your walk with Anna & Luna?</p>
+      <div class="rate-stars-big" id="rateStars">
+        <span class="star on" onclick="setRating(1)">⭐</span>
+        <span class="star on" onclick="setRating(2)">⭐</span>
+        <span class="star on" onclick="setRating(3)">⭐</span>
+        <span class="star off" onclick="setRating(4)">⭐</span>
+        <span class="star off" onclick="setRating(5)">⭐</span>
+      </div>
+      <div class="likes-grid" style="margin-bottom:16px">
+        <span class="lchip" onclick="toggleChip(this,'like')">Punctual</span>
+        <span class="lchip" onclick="toggleChip(this,'like')">Friendly dog</span>
+        <span class="lchip" onclick="toggleChip(this,'like')">Great walk</span>
+        <span class="lchip" onclick="toggleChip(this,'like')">Will walk again</span>
+        <span class="lchip" onclick="toggleChip(this,'dislike')">Late</span>
+        <span class="lchip" onclick="toggleChip(this,'dislike')">Unresponsive</span>
+      </div>
+      <div class="row">
+        <button class="btn btn-ghost" onclick="closeRate()">Skip</button>
+        <button class="btn btn-solid" onclick="submitRate()">Submit rating</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEEDBACK MODAL -->
+  <div class="feedback-modal" id="feedbackModal" onclick="if(event.target===this)closeFeedback()">
+    <div class="feedback-sheet">
+      <h3>💬 Give feedback</h3>
+      <p>Help us improve PackWalk. Takes 30 seconds.</p>
+      <div class="fb-opts" id="fbOpts">
+        <button class="fb-opt" onclick="selFb(this)">🐛 Bug / issue</button>
+        <button class="fb-opt" onclick="selFb(this)">💡 Feature idea</button>
+        <button class="fb-opt" onclick="selFb(this)">🎨 Design feedback</button>
+        <button class="fb-opt" onclick="selFb(this)">❤️ Love it!</button>
+      </div>
+      <textarea class="fb-textarea" placeholder="Tell us more… (optional)"></textarea>
+      <div class="row">
+        <button class="btn btn-ghost" onclick="closeFeedback()">Cancel</button>
+        <button class="btn btn-solid" onclick="submitFeedback()">Send feedback</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAB: Feedback -->
+  <button class="fab-feedback" id="fabFeedback" onclick="openFeedback()" title="Give feedback" style="display:none">
+    <svg viewBox="0 0 24 24" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="13" y2="14"/></svg>
+  </button>
+
 </div><!-- /phone -->
 
 <script>
 // ════════════════════════════════════
-// DOG DATA with real photos via picsum
+// SPLASH: two-phase launch
 // ════════════════════════════════════
+(function initSplash(){
+  // Phase 1: show logo + spinner for 1.8s
+  setTimeout(()=>{
+    const launch = document.getElementById('splashLaunch');
+    const content = document.getElementById('splashContent');
+    launch.style.display='none';
+    content.style.display='flex';
+    requestAnimationFrame(()=>requestAnimationFrame(()=>content.classList.add('visible')));
+  }, 1800);
+})();
 const DOGS = [
-  { name:'Luna', owner:'Anna', sub:'Small · Friendly', seed:200, fallback:'🐕', dp:'dp1',
+  { name:'Luna',  owner:'Anna',   sub:'Small · Friendly', fallback:'🐕', dp:'dp1',
     likes:['Cuddles','Morning walks','Other dogs'], dislikes:['Loud noises','Bikes'],
     desc:'Calm and curious. Loves meeting new dogs at the park. Best after 17:00.' },
-  { name:'Bruno', owner:'Max', sub:'Medium · Playful', seed:237, fallback:'🐩', dp:'dp2',
+  { name:'Bruno', owner:'Max',    sub:'Medium · Playful',  fallback:'🐩', dp:'dp2',
     likes:['Fetch','Water','Big groups'], dislikes:['Cats','Tight spaces'],
     desc:'High energy. Needs space to run. Loves group walks at Hasenheide.' },
-  { name:'Coco', owner:'Julia', sub:'Small · Shy', seed:325, fallback:'🦮', dp:'dp3',
+  { name:'Coco',  owner:'Julia',  sub:'Small · Shy',       fallback:'🦮', dp:'dp3',
     likes:['Quiet walks','Treats','Sniffing'], dislikes:['Crowds','Strangers'],
     desc:'Gentle and shy. Needs a slow intro. Prefers one-to-one walks.' },
-  { name:'Milo', owner:'Sophie', sub:'Large · Social', seed:177, fallback:'🐶', dp:'dp4',
+  { name:'Milo',  owner:'Sophie', sub:'Large · Social',    fallback:'🐶', dp:'dp4',
     likes:['Running','Other dogs','Kids'], dislikes:['Rain','Waiting'],
     desc:'Social butterfly. Loves everyone. Morning runs at Tempelhofer Feld.' },
-  { name:'Nyx', owner:'Anya', sub:'Small · Calm', seed:433, fallback:'🐾', dp:'dp5',
+  { name:'Nyx',   owner:'Anya',   sub:'Small · Calm',      fallback:'🐾', dp:'dp5',
     likes:['Evening walks','Calm dogs','Parks'], dislikes:['Loud dogs','Heat'],
     desc:'My quiet companion. Loves Körnerpark evenings. Very gentle.' },
 ];
+// place.dog returns real random dog photos
+const DOG_CARD_IMGS  = [200,201,202,203,204].map(n=>`https://place.dog/${n}/120`);
+const DOG_DETAIL_IMGS= [200,201,202,203,204].map(n=>`https://place.dog/${n}/400`);
 
 // Build dog grid with real photos
 function buildDogGrid() {
@@ -878,7 +1182,7 @@ function buildDogGrid() {
     card.className = 'dcard';
     card.onclick = () => openDogDetail(i);
     card.innerHTML = `
-      <img src="https://picsum.photos/seed/dog${d.seed}/200/120" class="dphoto" alt="${d.name}"
+      <img src="https://place.dog/${200+i}/120" class="dphoto" alt="${d.name}"
         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
       <div class="dphoto-placeholder ${d.dp}" style="display:none">${d.fallback}</div>
       <div class="dcbody">
@@ -996,12 +1300,18 @@ function doLogin() {
 function obNext(step) {
   document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('on'));
   document.getElementById('ob'+step).classList.add('on');
+  // 4 pips now (0–3)
   document.querySelectorAll('.ob-pip').forEach((p,i)=>p.classList.toggle('done',i<=step));
+}
+function selVerify(el){
+  document.querySelectorAll('.verify-opt').forEach(o=>o.classList.remove('sel'));
+  el.classList.add('sel');
 }
 function finishOnboard() {
   document.getElementById('onboardShell').classList.remove('on');
   const app = document.getElementById('appWrapper');
   app.classList.add('on');
+  document.getElementById('fabFeedback').style.display='flex';
   buildDogGrid();
   // show home skeleton briefly then reveal
   setTimeout(()=>{
@@ -1083,7 +1393,43 @@ function logOut() {
   document.getElementById('authShell').style.display='flex';
   document.getElementById('authShell').classList.remove('out');
   document.getElementById('loadingScreen').style.display='none';
+  document.getElementById('fabFeedback').style.display='none';
   showSplash();
+}
+
+// Safety modal
+function openSafety(){document.getElementById('safetyModal').classList.add('on')}
+function closeSafety(){document.getElementById('safetyModal').classList.remove('on')}
+
+// Rate modal
+let _ratingVal=3;
+function openRate(name){
+  document.getElementById('rateWalkName').textContent='How was your walk with '+name+'?';
+  setRating(3);
+  document.getElementById('rateModal').classList.add('on');
+}
+function closeRate(){document.getElementById('rateModal').classList.remove('on')}
+function setRating(n){
+  _ratingVal=n;
+  document.querySelectorAll('#rateStars .star').forEach((s,i)=>{s.classList.toggle('on',i<n);s.classList.toggle('off',i>=n)});
+}
+function submitRate(){
+  closeRate();
+  const s=document.createElement('div'); s.className='success'; s.textContent='⭐ Rating submitted! Thanks for helping the community.';
+  document.getElementById('profile').insertBefore(s,document.getElementById('profile').firstChild);
+  setTimeout(()=>s.remove(),3000);
+}
+
+// Feedback modal
+function openFeedback(){document.getElementById('feedbackModal').classList.add('on')}
+function closeFeedback(){document.getElementById('feedbackModal').classList.remove('on')}
+function selFb(el){document.querySelectorAll('.fb-opt').forEach(b=>b.classList.remove('sel'));el.classList.add('sel')}
+function submitFeedback(){
+  closeFeedback();
+  const s=document.createElement('div'); s.className='success'; s.textContent='💬 Thank you! Your feedback helps us improve PackWalk.';
+  const content=document.querySelector('#appWrapper .content .screen.active');
+  if(content) content.insertBefore(s,content.firstChild);
+  setTimeout(()=>s.remove(),3500);
 }
 
 // ════════════════════════════════════

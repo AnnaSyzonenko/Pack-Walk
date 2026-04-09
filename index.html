@@ -1,0 +1,3032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>PackWalk</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+    :root{
+      --bg:#f7f8fc; --surface:#fff; --text:#1a2033; --muted:#697289;
+      --line:#e7eaf4; --primary:#5b6cff; --primary-soft:#eef0ff;
+      --accent:#27c2a3; --accent-soft:#e8fbf6;
+      --warning:#ffb84d; --warning-soft:#fff5e3;
+      --danger:#ff6b6b; --shadow:0 16px 40px rgba(39,55,98,.12);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    input,select,textarea,button{font-family:'Inter',sans-serif}
+    html,body{background:linear-gradient(160deg,#e8ecff,#d8f5ef);font-family:'Inter',sans-serif;color:var(--text);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:28px 16px}
+    
+    .phone{
+      width:393px;height:852px;background:var(--surface);border-radius:44px;overflow:hidden;
+      box-shadow:0 32px 80px rgba(20,30,80,.22),0 0 0 1px rgba(255,255,255,.6);
+      position:relative;display:flex;flex-direction:column;
+    }
+
+    @media(max-width:500px){
+      html,body{padding:0;height:100%;overflow:hidden}
+      .phone{width:100%;height:100%;border-radius:0;box-shadow:none}
+    }
+
+    /* PUSH NOTIFICATION BANNER */
+    .push-banner{
+      position:absolute;top:0;left:0;right:0;z-index:500;
+      background:rgba(30,35,60,.92);backdrop-filter:blur(16px);
+      border-radius:20px;margin:10px;padding:14px 16px;
+      display:flex;align-items:center;gap:12px;
+      transform:translateY(-120%);transition:transform .4s cubic-bezier(.34,1.2,.64,1);
+      box-shadow:0 8px 24px rgba(0,0,0,.3);
+    }
+    .push-banner.show{transform:translateY(0)}
+    .push-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#5b6cff 0%,#6b7fff 40%,#27c2a3 100%);display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
+    .push-text{flex:1}
+    .push-title{font-size:12px;font-weight:800;color:#fff;margin-bottom:2px}
+    .push-sub{font-size:11px;color:rgba(255,255,255,.7)}
+    .push-close{font-size:18px;color:rgba(255,255,255,.5);cursor:pointer;padding:4px;background:none;border:none}
+
+    /* AUTH SHELL */
+    #authShell{position:absolute;inset:0;z-index:300;display:flex;flex-direction:column;background:#fff;transition:opacity .4s,transform .4s}
+    #authShell.out{opacity:0;transform:scale(.96);pointer-events:none}
+
+    #splashScreen{
+      flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:#fff;padding:48px 32px;
+    }
+    .splash-launch{display:flex;flex-direction:column;align-items:center;gap:22px;width:100%}
+    .splash-logo{
+      width:80px;height:80px;border-radius:22px;
+      background:linear-gradient(135deg,#5b6cff 0%,#6b7fff 40%,#27c2a3 100%);
+      display:flex;align-items:center;justify-content:center;
+      color:#fff;font-size:34px;font-weight:900;letter-spacing:-.04em;
+      box-shadow:0 16px 40px rgba(91,108,255,.3);
+      animation:pop .55s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    @keyframes pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+    .launch-spinner{width:28px;height:28px;border-radius:50%;border:2.5px solid var(--line);border-top-color:var(--primary);animation:spin .7s linear infinite}
+    .splash-content{display:none;flex-direction:column;align-items:center;width:100%;opacity:0;transition:opacity .5s ease}
+    .splash-content.visible{opacity:1}
+    .splash-wordmark{font-size:32px;font-weight:900;letter-spacing:-.05em;color:var(--text);margin-bottom:6px}
+    .splash-tagline{font-size:15px;color:var(--muted);margin-bottom:36px;text-align:center;line-height:1.5}
+    .splash-feats{display:flex;flex-direction:column;gap:10px;width:100%;margin-bottom:36px}
+    .sf{display:flex;align-items:flex-start;gap:14px;padding:14px 16px;background:var(--bg);border:1px solid var(--line);border-radius:16px;text-align:left}
+    .sf-ico{font-size:22px;flex:none;margin-top:1px}
+    .sf-t{font-size:13px;font-weight:700;color:var(--text);line-height:1.3}
+    .sf-s{font-size:12px;font-weight:400;color:var(--muted);margin-top:3px}
+    .splash-btn{width:100%;padding:17px;border:none;border-radius:18px;background:var(--primary);color:#fff;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 10px 28px rgba(91,108,255,.3);letter-spacing:-.02em;transition:transform .15s;margin-bottom:12px}
+    .splash-btn:active{transform:scale(.98)}
+    .splash-link{font-size:13px;color:var(--muted);text-align:center}
+    .splash-link a{color:var(--primary);font-weight:800;text-decoration:none}
+
+    #authScreen{flex:1;display:none;flex-direction:column}
+    .auth-header{padding:52px 24px 22px;background:linear-gradient(135deg,#eef0ff,#e8fbf6);border-bottom:1px solid var(--line)}
+    .auth-back{background:none;border:none;font-size:13px;font-weight:700;color:var(--primary);cursor:pointer;margin-bottom:18px;display:block}
+    .auth-logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#5b6cff 0%,#6b7fff 40%,#27c2a3 100%);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 6px 18px rgba(91,108,255,.3);margin-bottom:14px}
+    .auth-title{font-size:24px;font-weight:900;letter-spacing:-.04em;margin-bottom:4px}
+    .auth-sub{font-size:13px;color:var(--muted)}
+
+    .auth-tabs{display:flex;background:#fff;border-bottom:1px solid var(--line)}
+    .auth-tab{flex:1;padding:14px;border:none;background:none;font-size:14px;font-weight:800;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;transition:.2s}
+    .auth-tab.on{color:var(--primary);border-bottom-color:var(--primary)}
+
+    .auth-body{flex:1;padding:22px 22px 16px;display:flex;flex-direction:column;gap:14px;background:#fff;overflow-y:auto}
+    .auth-panel{display:none;flex-direction:column;gap:14px}
+    .auth-panel.on{display:flex}
+    .afield{display:flex;flex-direction:column;gap:6px}
+    .afield label{font-size:12px;font-weight:800;color:var(--text)}
+    .afield input{padding:14px 16px;border:1.5px solid var(--line);border-radius:14px;font-size:15px;outline:none;transition:border .2s;background:var(--bg)}
+    .afield input:focus{border-color:var(--primary);background:#fff}
+    .afield .fn{font-size:11px;color:var(--muted)}
+    .afield .fn a{color:var(--primary);font-weight:700;text-decoration:none}
+    .adivider{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);font-weight:600}
+    .adivider::before,.adivider::after{content:'';flex:1;height:1px;background:var(--line)}
+    .social-row{display:flex;gap:10px}
+    .soc-btn{flex:1;padding:12px;border:1.5px solid var(--line);border-radius:14px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:.15s}
+    .soc-btn:hover{background:var(--bg)}
+    .asubmit{width:100%;padding:16px;border:none;border-radius:16px;background:var(--primary);color:#fff;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 8px 20px rgba(91,108,255,.35);transition:.15s;letter-spacing:-.02em}
+    .asubmit:active{transform:scale(.98)}
+
+    .auth-foot{font-size:11px;color:var(--muted);text-align:center;line-height:1.5}
+    .auth-foot a{color:var(--primary);font-weight:700;text-decoration:none}
+
+    #loadingScreen{flex:1;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#fff}
+    .spinner{width:44px;height:44px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--primary);animation:spin .7s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading-msg{font-size:14px;font-weight:600;color:var(--muted)}
+
+    /* ONBOARDING */
+    #onboardShell{position:absolute;inset:0;z-index:250;background:#fff;display:none;flex-direction:column}
+    #onboardShell.on{display:flex}
+    .ob-progress{display:flex;gap:6px;padding:56px 24px 0}
+    .ob-pip{flex:1;height:4px;border-radius:99px;background:var(--line);transition:.3s}
+    .ob-pip.done{background:var(--primary)}
+    .ob-step{flex:1;display:none;flex-direction:column;padding:28px 24px 24px;overflow-y:auto}
+    .ob-step.on{display:flex}
+    .ob-emoji{font-size:52px;margin-bottom:16px;animation:pop .5s cubic-bezier(.34,1.56,.64,1) both}
+    .ob-title{font-size:26px;font-weight:900;letter-spacing:-.04em;margin-bottom:8px}
+    .ob-sub{font-size:14px;color:var(--muted);line-height:1.5;margin-bottom:28px}
+    .ob-card{background:var(--bg);border:1.5px solid var(--line);border-radius:20px;padding:18px;margin-bottom:14px}
+    .ob-input{width:100%;padding:14px 16px;border:1.5px solid var(--line);border-radius:14px;font-size:15px;outline:none;background:#fff;transition:border .2s;margin-bottom:12px}
+    .ob-input:focus{border-color:var(--primary)}
+    .ob-select{width:100%;padding:14px 16px;border:1.5px solid var(--line);border-radius:14px;font-size:14px;outline:none;background:#fff;margin-bottom:12px}
+    .ob-next{width:100%;padding:16px;border:none;border-radius:16px;background:var(--primary);color:#fff;font-size:16px;font-weight:900;cursor:pointer;margin-top:auto;box-shadow:0 8px 20px rgba(91,108,255,.3);letter-spacing:-.02em;transition:.15s}
+    .ob-next:active{transform:scale(.98)}
+    .ob-skip{width:100%;padding:12px;border:none;background:none;font-size:14px;color:var(--muted);font-weight:600;cursor:pointer;margin-top:8px}
+
+    .geo-illus{width:100%;height:160px;background:linear-gradient(135deg,var(--primary-soft),var(--accent-soft));border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:64px;margin-bottom:20px}
+    .geo-point{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+    .geo-dot{width:8px;height:8px;border-radius:50%;background:var(--primary);flex:none;margin-top:5px}
+    .geo-txt{font-size:13px;color:var(--muted);line-height:1.45}
+
+    /* APP WRAPPER */
+    #appWrapper{display:none;flex-direction:column;height:100%}
+    #appWrapper.on{display:flex}
+
+    .top{
+      padding:52px 20px 16px;flex:none;
+      background:radial-gradient(circle at top right,rgba(39,194,163,.2),transparent 34%),
+        radial-gradient(circle at top left,rgba(91,108,255,.22),transparent 38%),
+        linear-gradient(135deg,#fff,#f3f6ff);
+      border-bottom:1px solid var(--line);
+    }
+    .brand-row{display:flex;align-items:center;justify-content:space-between}
+    .brand{display:flex;align-items:center;gap:11px}
+    .logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#5b6cff 0%,#6b7fff 40%,#27c2a3 100%);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:#fff;box-shadow:0 8px 20px rgba(91,108,255,.28)}
+    .brand-text h1{font-size:20px;font-weight:900;letter-spacing:-.03em}
+    .brand-text p{font-size:12px;color:var(--muted);margin-top:2px}
+    .status-pill{padding:7px 12px;border-radius:999px;background:var(--accent-soft);color:#13846d;font-size:12px;font-weight:700}
+
+    .content{flex:1;overflow-y:auto;padding:16px 16px 20px;-webkit-overflow-scrolling:touch}
+    .screen{display:none}
+    .screen.active{display:block}
+
+    .skel{background:linear-gradient(90deg,#f0f2f8 25%,#e8eaf2 50%,#f0f2f8 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:10px}
+    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    .skel-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(32,43,72,.04)}
+    .skel-line{height:13px;margin-bottom:8px}
+    .skel-line.w80{width:80%}.skel-line.w60{width:60%}.skel-line.w40{width:40%}
+    .skel-circle{width:40px;height:40px;border-radius:14px}
+
+    .sh{display:flex;justify-content:space-between;align-items:center;margin:6px 0 12px}
+    .sh h2{font-size:17px;font-weight:900;letter-spacing:-.03em}
+    .sh a{font-size:13px;color:var(--primary);text-decoration:none;font-weight:700}
+
+    .card,.input-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:0 6px 20px rgba(32,43,72,.05);margin-bottom:12px}
+    .card h3{font-size:15px;font-weight:800;margin-bottom:4px;letter-spacing:-.02em}
+    .card p{font-size:13px;line-height:1.45;color:var(--muted);margin-bottom:6px}
+    .card-top{display:flex;gap:12px;align-items:flex-start;margin-bottom:8px}
+
+    .hero{background:linear-gradient(135deg,var(--primary),#7e8bff 60%,#8df0da 130%);color:#fff;border-radius:22px;padding:18px;box-shadow:var(--shadow);margin-bottom:14px}
+    .hero h3{font-size:20px;font-weight:900;letter-spacing:-.04em;margin-bottom:6px}
+    .hero p{font-size:13px;line-height:1.45;opacity:.92;margin-bottom:14px}
+    .hero-actions{display:flex;gap:10px}
+
+    .btn{border:none;border-radius:14px;padding:13px 14px;font-size:14px;font-weight:800;cursor:pointer;transition:.15s;width:100%}
+    .btn:active{transform:translateY(1px)}
+    .btn-primary{background:#fff;color:#3443c7}
+    .btn-secondary{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.24)}
+    .btn-solid{background:var(--primary);color:#fff;box-shadow:0 6px 16px rgba(91,108,255,.3)}
+    .btn-soft{background:var(--primary-soft);color:#3f4fd4}
+    .btn-accent{background:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(39,194,163,.25)}
+    .btn-warning{background:var(--warning-soft);color:#a36a11}
+    .btn-ghost{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+    .row{display:flex;gap:10px}.row>*{flex:1}
+
+    .tags{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 10px}
+    .tag{padding:5px 10px;border-radius:999px;font-size:11px;font-weight:800}
+    .tag.blue{background:var(--primary-soft);color:#4253db}
+    .tag.green{background:var(--accent-soft);color:#13846d}
+    .tag.yellow{background:var(--warning-soft);color:#9d680e}
+    .tag.red{background:#fff0f0;color:#cc4545}
+
+    .avatar{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;flex:none}
+    .av-orange{background:linear-gradient(135deg,#ffdb8c,#ffb84d);color:#744400}
+    .av-teal{background:linear-gradient(135deg,#b8f1df,#27c2a3);color:#0d6655}
+    .av-purple{background:linear-gradient(135deg,#c7d2ff,#5b6cff);color:#fff}
+    .av-me{background:linear-gradient(135deg,#5b6cff 0%,#6b7fff 40%,#27c2a3 100%);color:#fff}
+
+    .db{background:linear-gradient(135deg,#eef0ff,#e8fbf6);border:1px solid #d4d9ff;border-left:4px solid var(--primary);border-radius:16px;padding:13px 15px;margin-bottom:14px;display:flex;align-items:flex-start;gap:11px}
+    .db-icon{font-size:20px;flex:none;margin-top:1px}
+    .db-label{font-size:10px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+    .db-title{font-size:14px;font-weight:800;margin-bottom:4px}
+    .db-desc{font-size:12px;color:var(--muted);line-height:1.4}
+    .db-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .db-chip{font-size:10px;font-weight:700;padding:4px 8px;border-radius:999px;background:#fff;color:var(--muted);border:1px solid var(--line)}
+
+    /* Quick grid */
+    .qgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+    .qcard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;cursor:pointer;transition:.15s;box-shadow:0 4px 14px rgba(32,43,72,.04)}
+    .qcard:active{transform:scale(.97)}
+    .qico{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+    .qico svg{width:20px;height:20px}
+    .qico.bl{background:var(--primary-soft)} .qico.bl svg{stroke:var(--primary)}
+    .qico.gr{background:var(--accent-soft)} .qico.gr svg{stroke:var(--accent)}
+    .qico.ye{background:var(--warning-soft)} .qico.ye svg{stroke:var(--warning)}
+    .qcard h4{font-size:14px;font-weight:800;margin-bottom:3px}
+    .qcard p{font-size:11px;color:var(--muted);line-height:1.4}
+
+    /* Map */
+    .map-wrap{border-radius:18px;overflow:hidden;height:320px;border:1px solid var(--line);box-shadow:0 6px 20px rgba(32,43,72,.08);margin-bottom:12px}
+    #leaflet-map{height:100%;width:100%}
+    .map-legend{display:flex;gap:16px;margin-bottom:12px;padding:0 4px}
+    .leg{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);font-weight:600}
+    .ldot{width:10px;height:10px;border-radius:50%;flex:none}
+    .lsq{width:10px;height:10px;border-radius:3px;flex:none;background:var(--warning)}
+    .gm-bub{display:flex;flex-direction:column;align-items:center}
+    .bub{padding:5px 10px;border-radius:10px;font-size:12px;font-weight:800;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,.2);border:1.5px solid #fff}
+    .bub.gr{background:var(--accent);color:#fff} .bub.ye{background:var(--warning);color:#fff} .bub.re{background:#ff6b6b;color:#fff}
+    .bubtail{width:8px;height:8px;background:inherit;transform:rotate(45deg);margin-top:-5px}
+    .popup-inner h4{font-size:14px;font-weight:800;margin-bottom:3px}
+    .popup-inner p{font-size:12px;color:var(--muted);margin:0}
+    .popup-action{width:100%;margin-top:8px;padding:9px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:12px;font-weight:800;cursor:pointer}
+
+    /* Confirm overlay */
+    #confirmScreen{display:none;flex-direction:column;position:absolute;inset:0;z-index:200;background:#fff}
+    #confirmScreen.on{display:flex}
+    .confirm-map{height:160px;background:linear-gradient(135deg,#d6eaff,#c8f7e8);display:flex;align-items:center;justify-content:center;font-size:56px}
+    .confirm-body{flex:1;padding:20px 16px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+    .confirm-spot{display:flex;align-items:center;gap:12px;background:var(--bg);border-radius:16px;padding:14px 16px;border:1px solid var(--line)}
+    .spot-pin{font-size:24px;flex:none}
+
+    /* Chat */
+    .chat-list{display:flex;flex-direction:column;gap:10px;margin:12px 0;max-height:340px;overflow-y:auto;scroll-behavior:smooth}
+    .msg{max-width:82%;padding:11px 14px;border-radius:16px;font-size:13px;line-height:1.45}
+    .msg.me{align-self:flex-end;background:var(--primary);color:#fff;border-bottom-right-radius:4px}
+    .msg.them{background:#f8faff;color:var(--text);border-bottom-left-radius:4px}
+    .msg.typing{background:#f8faff;color:var(--muted);font-style:italic}
+    .composer{display:flex;gap:8px}
+    .composer input{flex:1;padding:13px 14px;border:1.5px solid var(--line);border-radius:14px;font-size:14px;outline:none;transition:border .2s}
+    .composer input:focus{border-color:var(--primary)}
+
+    .input-card label{display:block;font-size:12px;font-weight:800;margin-bottom:6px}
+    .input-card input,.input-card select,.input-card textarea{width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:14px;font-size:14px;outline:none;background:#fff;margin-bottom:0;transition:border .2s}
+    .input-card input:focus,.input-card select:focus,.input-card textarea:focus{border-color:var(--primary)}
+    .input-card textarea{resize:none;min-height:88px}
+    .stack{display:flex;flex-direction:column;gap:14px}
+
+    .success{padding:14px;border-radius:16px;background:var(--accent-soft);color:#116f5d;border:1px solid #caf0e4;font-size:13px;line-height:1.45;margin-bottom:12px}
+
+    /* Dog profiles */
+    .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+    .dcard{background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden;cursor:pointer;transition:.15s;box-shadow:0 4px 16px rgba(32,43,72,.05)}
+    .dcard:active{transform:scale(.97)}
+    .dphoto{width:100%;height:120px;object-fit:cover;display:block}
+    .dphoto-placeholder{width:100%;height:120px;display:flex;align-items:center;justify-content:center;font-size:44px}
+    .dp1{background:linear-gradient(135deg,#ffd6e0,#ffb3c6)}
+    .dp2{background:linear-gradient(135deg,#d6eaff,#93c5fd)}
+    .dp3{background:linear-gradient(135deg,#d6ffd6,#86efac)}
+    .dp4{background:linear-gradient(135deg,#fff3cd,#fcd34d)}
+    .dp5{background:linear-gradient(135deg,#ede9fe,#c4b5fd)}
+    .dp6{background:linear-gradient(135deg,#ffedd5,#fdba74)}
+    .dcbody{padding:10px 12px 12px}
+    .dcname{font-size:14px;font-weight:800;margin-bottom:2px}
+    .dcsub{font-size:11px;color:var(--muted);margin-bottom:7px}
+    .dctags{display:flex;gap:5px;flex-wrap:wrap}
+    .dct{font-size:10px;font-weight:700;padding:3px 7px;border-radius:999px;background:var(--primary-soft);color:#4253db}
+    .dct.g{background:var(--accent-soft);color:#13846d}
+    .dct.y{background:var(--warning-soft);color:#9d680e}
+
+    .pd-hidden{display:none}
+    .profile-detail{display:none}
+    .profile-detail.on{display:block}
+    .gallery-list.hid{display:none}
+
+    .photo-up{width:100%;height:100px;border:2px dashed var(--line);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;transition:border .2s}
+    .photo-up:hover{border-color:var(--primary)}
+    .photo-previews{display:flex;gap:8px;margin-top:10px}
+    .pthumb{width:58px;height:58px;border-radius:12px;object-fit:cover}
+    .pthumb-placeholder{width:58px;height:58px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;flex:none}
+
+    .likes-grid{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+    .lchip{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1.5px solid var(--line);background:#fff;cursor:pointer;transition:.15s}
+    .lchip.sl{background:var(--accent-soft);border-color:var(--accent);color:#13846d}
+    .lchip.sd{background:#fff0f0;border-color:var(--danger);color:#ca4545}
+
+    .setting-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--line)}
+    .setting-row:last-child{border-bottom:none}
+    .setting-label{font-size:14px;font-weight:700}
+    .setting-sub{font-size:12px;color:var(--muted);margin-top:2px}
+    .toggle{width:44px;height:24px;border-radius:999px;background:var(--line);position:relative;cursor:pointer;transition:.2s;border:none;flex:none}
+    .toggle.on{background:var(--accent)}
+    .toggle::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+    .toggle.on::after{left:23px}
+    .range-val{font-size:13px;font-weight:700;color:var(--primary)}
+
+    .socials{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .social-link{font-size:12px;font-weight:800;color:#3443c7;background:#f2f4ff;padding:7px 10px;border-radius:999px;text-decoration:none}
+
+    /* NAV */
+    .nav{
+      flex:none;
+      background:rgba(255,255,255,.96);backdrop-filter:blur(16px);
+      border-top:1px solid var(--line);
+      display:grid;grid-template-columns:repeat(5,1fr);
+      padding:10px 4px 24px;
+    }
+    .nav-btn{
+      background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;
+      color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.01em;position:relative;
+      padding:6px 4px;border-radius:16px;transition:.2s;
+    }
+    .nav-btn .nav-icon{
+      width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;transition:.2s;
+    }
+    .nav-btn .nav-icon svg{width:20px;height:20px;transition:.2s}
+    .nav-btn.active{color:var(--primary)}
+    .nav-btn.active .nav-icon{background:var(--primary-soft)}
+    .nav-btn.active .nav-icon svg{stroke:var(--primary)}
+    .nav-btn:not(.active) .nav-icon svg{stroke:var(--muted)}
+    .nav-badge{position:absolute;top:4px;right:18px;width:16px;height:16px;border-radius:50%;background:var(--danger);color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+
+    .small{font-size:11px;color:var(--muted);line-height:1.4}
+
+    .dog-avatar{width:44px;height:44px;border-radius:14px;object-fit:cover;flex:none;border:2px solid var(--line)}
+    .dog-avatar-wrap{position:relative;flex:none}
+    .dog-avatar-wrap .verified-dot{position:absolute;bottom:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:#4285F4;border:2px solid #fff;display:flex;align-items:center;justify-content:center}
+    .dog-avatar-wrap .verified-dot svg{width:8px;height:8px;fill:#fff}
+
+    .verified-badge{display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,#4285F4,#34a0f7);color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;letter-spacing:.02em}
+    .verified-badge svg{width:10px;height:10px;fill:#fff}
+
+    .rating-row{display:flex;align-items:center;gap:6px;margin-top:6px}
+    .stars{display:flex;gap:2px}
+    .star{font-size:13px;cursor:pointer;transition:.1s}
+    .star.on{filter:none} .star.off{filter:grayscale(1) opacity(.4)}
+    .rating-count{font-size:11px;color:var(--muted);font-weight:600}
+    .rate-modal{position:absolute;inset:0;z-index:600;background:rgba(26,32,51,.55);backdrop-filter:blur(4px);display:none;align-items:flex-end}
+    .rate-modal.on{display:flex}
+    .rate-sheet{background:#fff;border-radius:28px 28px 0 0;padding:24px;width:100%;box-shadow:0 -8px 40px rgba(0,0,0,.18)}
+    .rate-sheet h3{font-size:18px;font-weight:900;margin-bottom:6px}
+    .rate-sheet p{font-size:13px;color:var(--muted);margin-bottom:18px}
+    .rate-stars-big{display:flex;justify-content:center;gap:10px;margin-bottom:18px}
+    .rate-stars-big .star{font-size:36px}
+
+    .safety-modal{position:absolute;inset:0;z-index:600;background:rgba(26,32,51,.55);backdrop-filter:blur(4px);display:none;align-items:flex-end}
+    .safety-modal.on{display:flex}
+    .safety-sheet{background:#fff;border-radius:28px 28px 0 0;padding:0;width:100%;max-height:88%;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,.18)}
+    .safety-header{padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .safety-header h3{font-size:18px;font-weight:900}
+    .safety-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);padding:4px}
+    .safety-body{padding:0 20px 28px;display:flex;flex-direction:column;gap:12px}
+    .safety-tip{background:var(--bg);border-radius:16px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px;border-left:4px solid var(--primary)}
+    .safety-tip.green{border-left-color:var(--accent)}
+    .safety-tip.yellow{border-left-color:var(--warning)}
+    .safety-tip.red{border-left-color:var(--danger)}
+    .stip-ico{font-size:22px;flex:none;margin-top:1px}
+    .stip-title{font-size:13px;font-weight:800;margin-bottom:3px}
+    .stip-text{font-size:12px;color:var(--muted);line-height:1.45}
+
+    .fab-feedback{
+      position:absolute;bottom:88px;right:14px;z-index:90;
+      width:46px;height:46px;border-radius:999px;
+      background:linear-gradient(135deg,#5b6cff 0%,#6b7fff 40%,#27c2a3 100%);
+      border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+      box-shadow:0 6px 20px rgba(91,108,255,.4);transition:.15s;
+    }
+    .fab-feedback:active{transform:scale(.94)}
+    .fab-feedback svg{width:20px;height:20px;stroke:#fff;fill:none}
+    .feedback-modal{position:absolute;inset:0;z-index:600;background:rgba(26,32,51,.55);backdrop-filter:blur(4px);display:none;align-items:flex-end}
+    .feedback-modal.on{display:flex}
+    .feedback-sheet{background:#fff;border-radius:28px 28px 0 0;padding:24px;width:100%;box-shadow:0 -8px 40px rgba(0,0,0,.18)}
+    .feedback-sheet h3{font-size:18px;font-weight:900;margin-bottom:6px}
+    .feedback-sheet p{font-size:13px;color:var(--muted);margin-bottom:14px}
+    .fb-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+    .fb-opt{padding:11px 10px;border-radius:14px;border:1.5px solid var(--line);background:#fff;font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:.15s}
+    .fb-opt.sel{border-color:var(--primary);background:var(--primary-soft);color:var(--primary)}
+    .fb-textarea{width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:14px;font-size:14px;outline:none;resize:none;min-height:80px;margin-bottom:14px;font-family:inherit}
+    .fb-textarea:focus{border-color:var(--primary)}
+
+    .ob-safety-header{background:linear-gradient(135deg,#fff5e3,#fff0f0);border-radius:18px;padding:18px;margin-bottom:18px;text-align:center}
+    .ob-safety-ico{font-size:44px;margin-bottom:10px}
+    .ob-safety-title{font-size:17px;font-weight:900;margin-bottom:4px}
+    .ob-safety-sub{font-size:13px;color:var(--muted);line-height:1.4}
+    .ob-tip{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:14px;background:var(--bg);border-left:3px solid var(--primary);margin-bottom:8px}
+    .ob-tip.gr{border-left-color:var(--accent)}
+    .ob-tip.ye{border-left-color:var(--warning)}
+    .ob-tip.re{border-left-color:var(--danger)}
+    .ob-tip-ico{font-size:18px;flex:none;margin-top:1px}
+    .ob-tip-text{font-size:12px;color:var(--muted);line-height:1.4}
+    .ob-tip-text strong{color:var(--text);font-weight:800}
+
+    .verify-options{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+    .verify-opt{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1.5px solid var(--line);border-radius:16px;background:#fff;cursor:pointer;transition:.15s;text-align:left}
+    .verify-opt:hover,.verify-opt.sel{border-color:var(--primary);background:var(--primary-soft)}
+    .verify-opt-ico{width:38px;height:38px;border-radius:12px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
+    .verify-opt-label{font-size:14px;font-weight:700;margin-bottom:2px}
+    .verify-opt-sub{font-size:11px;color:var(--muted)}
+
+    .side-safety{
+      position:absolute;right:-1px;top:50%;transform:translateY(-50%);z-index:80;
+      writing-mode:vertical-lr;
+      background:linear-gradient(180deg,var(--warning),#ff9500);
+      color:#fff;font-size:11px;font-weight:900;letter-spacing:.08em;
+      padding:14px 7px;border-radius:10px 0 0 10px;
+      cursor:pointer;border:none;
+      box-shadow:-3px 0 12px rgba(255,149,0,.35);
+      display:none;gap:6px;align-items:center;transition:.15s;
+    }
+    .side-safety.on{display:flex}
+    .side-safety:hover{padding-right:10px}
+    .side-safety-ico{writing-mode:horizontal-tb;font-size:14px}
+
+    /* Chat conversations list */
+    .conv-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;cursor:pointer;transition:.15s;background:var(--bg);margin-bottom:8px}
+    .conv-item:hover{background:var(--primary-soft)}
+    .conv-item .conv-avatar{width:40px;height:40px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex:none}
+    .conv-item .conv-info{flex:1;min-width:0}
+    .conv-item .conv-name{font-size:13px;font-weight:800}
+    .conv-item .conv-last{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .conv-item .conv-badge{width:10px;height:10px;border-radius:50%;background:var(--primary);flex:none}
+
+    /* Community profiles section */
+    .community-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:14px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;cursor:pointer;transition:.15s}
+    .community-card:hover{border-color:var(--primary);box-shadow:0 6px 20px rgba(91,108,255,.1)}
+    .community-card .c-info{flex:1}
+    .community-card .c-name{font-size:14px;font-weight:800;margin-bottom:2px}
+    .community-card .c-sub{font-size:12px;color:var(--muted);margin-bottom:6px}
+
+    /* ── Tinder-style swipe cards ── */
+    .swipe-stack{position:relative;width:100%;height:430px;margin-bottom:14px}
+    .swipe-card{
+      position:absolute;inset:0;
+      background:var(--surface);border:1px solid var(--line);border-radius:24px;
+      box-shadow:0 8px 32px rgba(32,43,72,.12);
+      overflow:hidden;cursor:grab;
+      transition:transform .5s cubic-bezier(.34,1.2,.64,1),opacity .4s ease;
+      will-change:transform;user-select:none;
+      display:flex;flex-direction:column;
+    }
+    .swipe-card:active{cursor:grabbing}
+    .swipe-card.gone-left{transform:translateX(-140%) rotate(-18deg);opacity:0;pointer-events:none}
+    .swipe-card.gone-right{transform:translateX(140%) rotate(18deg);opacity:0;pointer-events:none}
+    .swipe-card .sc-photo{
+      height:190px;display:flex;align-items:center;justify-content:center;
+      font-size:72px;position:relative;
+    }
+    .swipe-card .sc-body{flex:1;padding:14px 18px;display:flex;flex-direction:column;overflow-y:auto}
+    .swipe-card .sc-name{font-size:19px;font-weight:900;letter-spacing:-.03em;margin-bottom:2px;display:flex;align-items:center;gap:8px}
+    .swipe-card .sc-location{font-size:12px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+    .swipe-card .sc-desc{font-size:13px;line-height:1.5;color:var(--text);margin-bottom:10px}
+    .swipe-card .sc-likes{display:flex;flex-wrap:wrap;gap:6px;font-size:13px;font-weight:600;color:var(--text)}
+    .swipe-card .sc-likes span{padding:4px 10px;border-radius:999px;background:var(--accent-soft);color:#13846d}
+    .swipe-card .sc-dislikes span{background:#fff0f0;color:#ca4545}
+    .swipe-stamp{
+      position:absolute;top:24px;padding:10px 18px;border-radius:12px;
+      font-size:22px;font-weight:900;letter-spacing:.04em;
+      border:4px solid;opacity:0;transition:opacity .15s;pointer-events:none;z-index:5;
+    }
+    .swipe-stamp.like{right:16px;color:#27c2a3;border-color:#27c2a3;transform:rotate(-16deg)}
+    .swipe-stamp.nope{left:16px;color:#ff6b6b;border-color:#ff6b6b;transform:rotate(16deg)}
+    .swipe-actions{display:flex;justify-content:center;gap:16px;margin-bottom:10px}
+    .swipe-btn{
+      width:56px;height:56px;border-radius:50%;border:2px solid var(--line);
+      background:#fff;display:flex;align-items:center;justify-content:center;
+      font-size:22px;cursor:pointer;transition:.15s;
+      box-shadow:0 4px 14px rgba(32,43,72,.08);
+    }
+    .swipe-btn:active{transform:scale(.9)}
+    .swipe-btn.nope{border-color:#ffcccc;color:#ff6b6b}
+    .swipe-btn.nope:hover{background:#fff0f0}
+    .swipe-btn.like{border-color:#b8f1df;color:#27c2a3}
+    .swipe-btn.like:hover{background:#e8fbf6}
+    .swipe-btn.msg{border-color:#c7d2ff;color:#5b6cff}
+    .swipe-btn.msg:hover{background:#eef0ff}
+    .swipe-counter{text-align:center;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:8px}
+    .match-banner{
+      background:linear-gradient(135deg,#5b6cff 0%,#6b7fff 40%,#27c2a3 100%);
+      color:#fff;border-radius:20px;padding:22px;text-align:center;
+      margin-bottom:14px;animation:pop .5s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    .match-banner h3{font-size:20px;font-weight:900;margin-bottom:6px}
+    .match-banner p{font-size:13px;opacity:.9;margin-bottom:14px}
+    .swipe-empty{text-align:center;padding:40px 20px}
+    .swipe-empty .se-ico{font-size:56px;margin-bottom:12px}
+    .swipe-empty h3{font-size:18px;font-weight:900;margin-bottom:6px}
+    .swipe-empty p{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:16px}
+    .view-toggle{display:flex;gap:0;border:1.5px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:14px}
+    .view-toggle button{flex:1;padding:10px;border:none;background:#fff;font-size:12px;font-weight:800;color:var(--muted);cursor:pointer;transition:.15s}
+    .view-toggle button.on{background:var(--primary);color:#fff}
+
+    /* My walks in profile */
+    .my-walk-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border-radius:14px;margin-bottom:6px}
+    .my-walk-item .mw-info{font-size:13px;font-weight:700}
+    .my-walk-item .mw-sub{font-size:11px;color:var(--muted)}
+    .my-walk-item .mw-status{font-size:11px;font-weight:800;color:var(--accent);padding:4px 10px;border-radius:999px;background:var(--accent-soft)}
+
+    /* User profile viewer modal */
+    .user-profile-modal{position:absolute;inset:0;z-index:600;background:rgba(26,32,51,.55);backdrop-filter:blur(4px);display:none;align-items:flex-end}
+    .user-profile-modal.on{display:flex}
+    .up-sheet{background:#fff;border-radius:28px 28px 0 0;padding:0;width:100%;max-height:92%;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,.18)}
+    .up-header{position:relative;padding:24px 20px 16px;background:linear-gradient(135deg,#eef0ff,#e8fbf6);border-radius:28px 28px 0 0}
+    .up-close{position:absolute;top:16px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);padding:4px}
+    .up-avatar{width:64px;height:64px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:26px;margin-bottom:12px}
+    .up-name{font-size:22px;font-weight:900;letter-spacing:-.03em;margin-bottom:4px}
+    .up-sub{font-size:13px;color:var(--muted);margin-bottom:8px}
+    .up-body{padding:16px 20px 28px;display:flex;flex-direction:column;gap:14px}
+    .up-section-label{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+    .card-top-clickable{cursor:pointer;border-radius:14px;padding:4px;margin:-4px;transition:background .15s}
+    .card-top-clickable:hover{background:var(--bg)}
+    .notif-item{display:flex;gap:12px;padding:12px 14px;border-radius:16px;background:var(--bg);border:1px solid var(--line);align-items:flex-start;margin-bottom:6px}
+    .notif-item.unread{background:var(--primary-soft);border-color:#c7d2ff}
+    .notif-ico{width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none;background:var(--primary-soft)}
+    .notif-body{flex:1;min-width:0}
+    .notif-text{font-size:13px;font-weight:600;line-height:1.4;margin-bottom:2px}
+    .notif-time{font-size:11px;color:var(--muted)}
+    .settings-modal{position:absolute;inset:0;z-index:600;background:rgba(26,32,51,.55);backdrop-filter:blur(4px);display:none;align-items:flex-end}
+    .settings-modal.on{display:flex}
+    .settings-sheet{background:#fff;border-radius:28px 28px 0 0;padding:0;width:100%;max-height:90%;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,.18)}
+    .settings-header{padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .settings-header h3{font-size:18px;font-weight:900}
+    .settings-body{padding:0 20px 28px}
+  </style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- PUSH NOTIFICATION -->
+  <div class="push-banner" id="pushBanner">
+    <div class="push-icon">🐾</div>
+    <div class="push-text">
+      <div class="push-title">Anna wants to join your walk!</div>
+      <div class="push-sub">Luna · Small dog · Friendly · 0.8 km away</div>
+    </div>
+    <button class="push-close" onclick="dismissPush()">×</button>
+  </div>
+
+  <!-- QUICK ONBOARD (single screen) -->
+  <div id="authShell">
+    <!-- App launch splash -->
+    <div id="launchSplash" style="position:absolute;inset:0;z-index:20;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;transition:opacity .5s ease">
+      <div class="splash-logo" style="width:80px;height:80px;font-size:34px;border-radius:22px">P</div>
+      <div style="font-size:28px;font-weight:900;letter-spacing:-.05em;color:var(--text)">PackWalk</div>
+      <div class="spinner" style="margin-top:4px"></div>
+    </div>
+    <div id="quickOnboard" style="flex:1;display:flex;flex-direction:column;padding:0;background:#fff">
+      <!-- Branded header -->
+      <div style="padding:68px 28px 24px;background:linear-gradient(135deg,#eef0ff,#e8fbf6);border-bottom:1px solid var(--line);text-align:center">
+        <div class="splash-logo" style="margin:0 auto 14px;width:64px;height:64px;font-size:28px;border-radius:18px">P</div>
+        <div style="font-size:26px;font-weight:900;letter-spacing:-.04em;margin-bottom:4px">PackWalk</div>
+        <div style="font-size:14px;color:var(--muted);line-height:1.5">Find dog owners nearby. Walk together.</div>
+      </div>
+      <!-- Form -->
+      <div style="flex:1;padding:24px 24px 20px;display:flex;flex-direction:column;gap:14px;overflow-y:auto">
+        <div style="font-size:16px;font-weight:900;letter-spacing:-.03em">Quick setup — 30 seconds</div>
+        
+        <div class="afield"><label>Your name</label><input class="ob-input" style="margin:0" placeholder="e.g. Anna" id="obName"/></div>
+        <div class="afield"><label>Neighbourhood</label><input class="ob-input" style="margin:0" placeholder="e.g. Neukölln" id="obHood"/></div>
+        <div class="afield"><label>Dog's name</label><input class="ob-input" style="margin:0" placeholder="e.g. Luna" id="obDogName"/></div>
+        <div class="row">
+          <div class="afield"><label>Dog size</label>
+            <select class="ob-select" style="margin:0" id="obDogSize">
+              <option value="">Size…</option>
+              <option>Small (under 10 kg)</option>
+              <option>Medium (10–25 kg)</option>
+              <option>Large (25 kg+)</option>
+            </select>
+          </div>
+          <div class="afield"><label>Character</label>
+            <select class="ob-select" style="margin:0" id="obDogChar">
+              <option value="">Type…</option>
+              <option>Friendly</option><option>Calm</option><option>Playful</option>
+              <option>Shy</option><option>Protective</option>
+            </select>
+          </div>
+        </div>
+        <select class="ob-select" style="margin:0;display:none" id="obDogEnergy">
+          <option value="">Energy…</option>
+          <option>🐢 Low</option><option>🚶 Medium</option><option>🏃 High</option>
+        </select>
+
+        <button class="ob-next" onclick="finishOnboard()" style="margin-top:auto">Let's go 🐾</button>
+        <p style="font-size:11px;color:var(--muted);text-align:center;line-height:1.4">By continuing you agree to our Terms and Privacy Policy.<br>Your profile will be visible to nearby dog owners.</p>
+      </div>
+    </div>
+    <!-- Loading screen -->
+    <div id="loadingScreen" style="display:none;position:absolute;inset:0;z-index:10;background:#fff;flex-direction:column;align-items:center;justify-content:center;gap:18px">
+      <div class="splash-logo" style="width:64px;height:64px;font-size:28px;border-radius:18px">P</div>
+      <div class="spinner"></div>
+      <p class="loading-msg" id="loadingMsg">Setting up your profile…</p>
+    </div>
+  </div>
+
+  <!-- Onboard shell (kept for JS compat, hidden) -->
+  <div id="onboardShell" style="display:none"></div>
+
+  <!-- MAIN APP -->
+  <div id="appWrapper">
+
+    <div id="confirmScreen">
+      <div style="display:flex;align-items:center;gap:12px;padding:62px 20px 14px;border-bottom:1px solid var(--line);flex:none">
+        <button onclick="closeConfirm()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">←</button>
+        <h2 style="font-size:17px;font-weight:900">Confirm meetup</h2>
+      </div>
+      <div class="confirm-map">🗺️</div>
+      <div class="confirm-body">
+        <div class="confirm-spot">
+          <div class="spot-pin">📍</div>
+          <div>
+            <div style="font-size:15px;font-weight:800;margin-bottom:2px" id="confirmSpotName">Körnerpark entrance</div>
+            <div style="font-size:12px;color:var(--muted)">Public meetup spot · 0.8 km away</div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Walk details</h3>
+          <p id="confirmDetails">Anna & Luna · Today 18:30 · Small dog · Friendly</p>
+          <div class="tags">
+            <span class="tag green">Public spot</span>
+            <span class="tag blue">Safe meetup</span>
+          </div>
+        </div>
+        <div class="card">
+          <h3>📋 Before you go</h3>
+          <p>Check the profile, review the social links, and confirm this is a public location. Your safety matters.</p>
+        </div>
+        <div class="row" style="margin-top:4px">
+          <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+          <button class="btn btn-solid" onclick="confirmJoin()">✓ Confirm meetup</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="top">
+      <div class="brand-row">
+        <div class="brand">
+          <div class="logo" onclick="adminTap()">P</div>
+          <div class="brand-text"><h1>PackWalk</h1><p>Walk together. Safer. Easier.</p></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button onclick="openNotifications()" style="position:relative;background:none;border:none;cursor:pointer;padding:6px;border-radius:12px;transition:.15s" id="notifBell">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+            <span id="notifBadge" style="display:none;position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:var(--danger);color:#fff;font-size:9px;font-weight:900;display:none;align-items:center;justify-content:center;border:2px solid #fff">0</span>
+          </button>
+          <div class="status-pill" id="nearbyPill">3 walkers nearby</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- HOME -->
+      <section id="home" class="screen active">
+        <div id="homeSkel">
+          <div class="skel-card"><div style="display:flex;gap:12px;margin-bottom:12px"><div class="skel skel-circle"></div><div style="flex:1"><div class="skel skel-line w80"></div><div class="skel skel-line w60"></div></div></div><div class="skel skel-line"></div><div class="skel skel-line w80"></div></div>
+          <div class="skel-card"><div style="display:flex;gap:12px;margin-bottom:12px"><div class="skel skel-circle"></div><div style="flex:1"><div class="skel skel-line w80"></div><div class="skel skel-line w60"></div></div></div><div class="skel skel-line"></div><div class="skel skel-line w40"></div></div>
+        </div>
+        <div id="homeContent" style="display:none">
+          <div class="hero">
+            <h3>Find a dog walk nearby</h3>
+            <p>See who is around, join a walk in seconds, or create your own.</p>
+            <div class="hero-actions">
+              <button class="btn btn-primary" onclick="showScreen('walks')">Join walk</button>
+              <button class="btn btn-secondary" onclick="showScreen('create')">Create walk</button>
+            </div>
+          </div>
+
+          <div class="sh"><h2>Quick actions</h2></div>
+          <div class="qgrid">
+            <div class="qcard" onclick="showScreen('map')"><div class="qico bl">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div><h4>Who's nearby</h4><p>Map with walkers & meetup spots</p></div>
+            <div class="qcard" onclick="showScreen('messages')"><div class="qico gr">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            </div><h4>Mini chat</h4><p>Short messages, easy coordination</p></div>
+            <div class="qcard" onclick="showScreen('community')"><div class="qico ye">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            </div><h4>Community</h4><p>Browse & match with real people</p></div>
+            <div class="qcard" onclick="openSafety()"><div class="qico bl">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div><h4>Safety guide</h4><p>Tips for safe dog walks & meetups</p></div>
+          </div>
+          <div class="sh"><h2>Nearby right now</h2><a href="#" onclick="showScreen('map');return false">Open map</a></div>
+          <div class="card">
+            <div class="card-top card-top-clickable" onclick="openUserProfile('Anna & Luna')">
+              <div class="dog-avatar-wrap">
+                <div class="avatar av-orange">A</div>
+                <div class="verified-dot"><svg viewBox="0 0 8 8" fill="#fff"><path d="M1 4l2 2 4-4"/></svg></div>
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+                  <h3 style="margin:0">Anna & Luna</h3>
+                  <span class="verified-badge"><svg viewBox="0 0 12 12" style="width:9px;height:9px;fill:#fff"><path d="M6 1l1.5 2.5L10 4l-2 2 .5 3L6 7.5 3.5 9l.5-3L2 4l2.5-.5z"/></svg>Verified</span>
+                </div>
+                <p style="margin:0;font-size:12px;color:var(--muted)">Körnerpark · Today · 18:30</p>
+                <div class="rating-row"><div class="stars"><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span><span class="star off">⭐</span></div><span class="rating-count">4.0 · 12 walks</span></div>
+              </div>
+            </div>
+            <div class="tags"><span class="tag blue">Small dog</span><span class="tag green">Friendly</span><span class="tag yellow">0.8 km</span></div>
+            <p>Calm evening walk. Instagram & Telegram linked.</p>
+            <div class="row"><button class="btn btn-solid" onclick="openConfirm('Anna & Luna','Körnerpark entrance','Anna & Luna · Today 18:30 · Small dog · Friendly')">Join walk</button><button class="btn btn-soft" onclick="openConversation('Anna & Luna')">Message</button></div>
+          </div>
+          <div class="card">
+            <div class="card-top card-top-clickable" onclick="openUserProfile('Max & Bruno')">
+              <div class="dog-avatar-wrap">
+                <div class="avatar av-teal">M</div>
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+                  <h3 style="margin:0">Max & Bruno</h3>
+                </div>
+                <p style="margin:0;font-size:12px;color:var(--muted)">Volkspark Hasenheide · Today · 19:00</p>
+                <div class="rating-row"><div class="stars"><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span></div><span class="rating-count">4.8 · 7 walks</span></div>
+              </div>
+            </div>
+            <div class="tags"><span class="tag blue">Medium dog</span><span class="tag green">Playful</span><span class="tag yellow">1.4 km</span></div>
+            <p>Group walk with 2 more owners.</p>
+            <div class="row"><button class="btn btn-solid" onclick="openConfirm('Max & Bruno','Volkspark Hasenheide – main entrance','Max & Bruno · Today 19:00 · Medium dog · Playful')">Join walk</button><button class="btn btn-soft" onclick="openConversation('Max & Bruno')">Message</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MAP -->
+      <section id="map" class="screen">
+        <div class="sh"><h2>Map nearby</h2><a href="#" onclick="showScreen('home');return false">Back</a></div>
+        <div class="map-wrap"><div id="leaflet-map"></div></div>
+        <div class="map-legend">
+          <div class="leg"><span class="ldot" style="background:#4285F4"></span>You</div>
+          <div class="leg"><span class="ldot" style="background:var(--accent)"></span>Walkers</div>
+          <div class="leg"><span class="lsq"></span>Spots</div>
+          <div class="leg"><span class="ldot" style="background:#ea4335"></span>Food</div>
+          <div class="leg"><span class="ldot" style="background:#9c27b0"></span>Bars</div>
+          <div class="leg"><span class="ldot" style="background:#ff9800"></span>Café</div>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <h3>📍 Neukölln area</h3>
+          <p>Dog walkers, meetup spots, plus dog-friendly restaurants, bars & cafés nearby.</p>
+          <button class="btn btn-accent" style="margin-top:8px" onclick="showScreen('walks')">See matching walks</button>
+        </div>
+      </section>
+
+      <!-- WALKS -->
+      <section id="walks" class="screen">
+        <div class="sh"><h2>Available walks</h2><a href="#" onclick="showScreen('create');return false">+ Create</a></div>
+        <div id="joinMessage"></div>
+        <div id="walksList">
+          <div class="card">
+            <div class="card-top card-top-clickable" onclick="openUserProfile('Sophie & Milo')">
+              <div class="dog-avatar-wrap"><div class="avatar av-purple">S</div><div class="verified-dot"><svg viewBox="0 0 8 8" fill="#fff"><path d="M1 4l2 2 4-4"/></svg></div></div>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><h3 style="margin:0">Sophie & Milo</h3><span class="verified-badge"><svg viewBox="0 0 12 12" style="width:9px;height:9px;fill:#fff"><path d="M6 1l1.5 2.5L10 4l-2 2 .5 3L6 7.5 3.5 9l.5-3L2 4l2.5-.5z"/></svg>Verified</span></div>
+                <p style="margin:0;font-size:12px;color:var(--muted)">Tempelhofer Feld · Tomorrow · 09:00</p>
+                <div class="rating-row"><div class="stars"><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span><span class="star off">⭐</span></div><span class="rating-count">4.2 · 5 walks</span></div>
+              </div>
+            </div>
+            <div class="tags"><span class="tag blue">Large dog</span><span class="tag green">Social</span><span class="tag yellow">Morning</span></div>
+            <p>Verified profile. Instagram linked. Calm public walk routes.</p>
+            <div class="row"><button class="btn btn-solid" onclick="openConfirm('Sophie & Milo','Tempelhofer Feld – north entrance','Sophie & Milo · Tomorrow 09:00 · Large dog · Social')">Join walk</button><button class="btn btn-soft" onclick="openConversation('Sophie & Milo')">Message</button></div>
+          </div>
+          <div class="card">
+            <div class="card-top card-top-clickable" onclick="openUserProfile('Julia & Coco')">
+              <div class="dog-avatar-wrap"><div class="avatar av-orange">J</div></div>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><h3 style="margin:0">Julia & Coco</h3></div>
+                <p style="margin:0;font-size:12px;color:var(--muted)">Richardplatz · Today · 20:00</p>
+                <div class="rating-row"><div class="stars"><span class="star on">⭐</span><span class="star on">⭐</span><span class="star on">⭐</span><span class="star off">⭐</span><span class="star off">⭐</span></div><span class="rating-count">3.5 · 3 walks</span></div>
+              </div>
+            </div>
+            <div class="tags"><span class="tag blue">Small dog</span><span class="tag green">Shy</span><span class="tag yellow">Evening</span></div>
+            <p>One-to-one walk. Telegram linked.</p>
+            <div class="row"><button class="btn btn-solid" onclick="openConfirm('Julia & Coco','Richardplatz – fountain','Julia & Coco · Today 20:00 · Small dog · Shy')">Join walk</button><button class="btn btn-soft" onclick="openConversation('Julia & Coco')">Message</button></div>
+          </div>
+        </div>
+        <!-- user-created walks injected here -->
+        <div id="userWalksSection"></div>
+      </section>
+
+      <!-- CREATE -->
+      <section id="create" class="screen">
+        <div class="sh"><h2>Create a walk</h2><a href="#" onclick="showScreen('home');return false">Cancel</a></div>
+        <div id="createMessage"></div>
+        <div class="input-card stack">
+          <div><label>Your name</label><input id="owner" placeholder="Anna"/></div>
+          <div><label>Dog name</label><input id="dog" placeholder="Luna"/></div>
+          <div class="row">
+            <div><label>Time</label><input id="time" placeholder="Today, 18:30"/></div>
+            <div><label>Distance</label><select id="distance"><option>Up to 1 km</option><option>Up to 2 km</option><option>Up to 3 km</option></select></div>
+          </div>
+          <div><label>Meetup spot</label><select id="location"><option>Volkspark Hasenheide</option><option>Tempelhofer Feld</option><option>Körnerpark entrance</option><option>Richardplatz</option><option>Hermannplatz</option><option>Pflügerstraße Café</option><option>Rixdorfer Teich</option><option>Bürgerpark Neukölln</option></select></div>
+          <div class="row">
+            <div><label>Dog size</label><select id="size"><option>Small</option><option>Medium</option><option>Large</option></select></div>
+            <div><label>Character</label><select id="temperament"><option>Friendly</option><option>Calm</option><option>Playful</option><option>Shy</option></select></div>
+          </div>
+          <div><label>Short note</label><textarea id="note" placeholder="Public meetup only. Calm evening walk."></textarea></div>
+          <button class="btn btn-solid" onclick="createWalk()">Publish walk</button>
+        </div>
+      </section>
+
+      <!-- COMMUNITY — Tinder-style swipe + list toggle -->
+      <section id="community" class="screen">
+        <div class="sh"><h2>Community</h2><a href="#" onclick="showScreen('home');return false">Home</a></div>
+        <div class="view-toggle">
+          <button class="on" id="viewSwipe" onclick="setCommunityView('swipe')">🃏 Swipe</button>
+          <button id="viewList" onclick="setCommunityView('list')">📋 List</button>
+        </div>
+
+        <!-- Swipe view -->
+        <div id="communitySwipeView">
+          <div id="matchBannerArea"></div>
+          <div class="swipe-counter" id="swipeCounter"></div>
+          <div class="swipe-stack" id="swipeStack">
+            <!-- cards injected by JS -->
+          </div>
+          <div class="swipe-actions">
+            <button class="swipe-btn nope" onclick="swipeAction('left')" title="Skip">✕</button>
+            <button class="swipe-btn msg" onclick="swipeAction('msg')" title="Message">💬</button>
+            <button class="swipe-btn like" onclick="swipeAction('right')" title="Walk together">🐾</button>
+          </div>
+        </div>
+
+        <!-- List view (hidden by default) -->
+        <div id="communityListView" style="display:none">
+          <div id="communityList"></div>
+        </div>
+      </section>
+
+      <!-- DOGS GALLERY -->
+      <section id="dogs" class="screen">
+        <div class="sh"><h2>Dog profiles</h2><a href="#" onclick="openNewDogProfile();return false">+ Add yours</a></div>
+        <div id="galleryList" class="gallery-list">
+          <div class="pgrid" id="dogGrid"></div>
+        </div>
+        <div id="dogDetail" class="profile-detail">
+          <div class="sh"><h2 id="detailTitle">Luna</h2><a href="#" onclick="closeDetail();return false">← Back</a></div>
+          <div class="card" style="margin-bottom:12px">
+            <img id="detailImg" style="width:100%;height:160px;object-fit:cover;border-radius:14px;margin-bottom:14px;display:none"/>
+            <div id="detailImgFallback" class="dphoto-placeholder dp1" style="height:160px;border-radius:14px;margin-bottom:14px;font-size:60px"></div>
+            <div id="detailOwner" style="font-size:13px;color:var(--muted);margin-bottom:10px"></div>
+            <div id="detailDesc" style="font-size:13px;line-height:1.5;margin-bottom:12px"></div>
+            <div class="tags" id="detailTags"></div>
+            <div style="margin-top:6px"><div style="font-size:10px;font-weight:800;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Likes ❤️</div><div class="likes-grid" id="detailLikes"></div></div>
+            <div style="margin-top:10px"><div style="font-size:10px;font-weight:800;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Doesn't like 🚫</div><div class="likes-grid" id="detailDislikes"></div></div>
+          </div>
+          <div class="row"><button class="btn btn-solid" onclick="openConfirm(document.getElementById('detailTitle').textContent,'Körnerpark entrance','Walk with '+document.getElementById('detailTitle').textContent)">Join a walk</button><button class="btn btn-soft" onclick="openConversation(document.getElementById('detailOwner').textContent)">Message</button></div>
+        </div>
+        <div id="newDogForm" class="profile-detail">
+          <div class="sh"><h2>Your dog's profile</h2><a href="#" onclick="closeDetail();return false">Cancel</a></div>
+          <div class="input-card stack">
+            <div class="row">
+              <div><label>Your name</label><input placeholder="Anna" id="ndOwner"/></div>
+              <div><label>Dog's name</label><input placeholder="Luna" id="ndDogName"/></div>
+            </div>
+            <div><label>About your dog</label><textarea placeholder="Calm and curious. Loves meeting new dogs…" id="ndDesc"></textarea></div>
+            <div class="row">
+              <div><label>Size</label><select id="ndSize"><option>Small</option><option>Medium</option><option>Large</option></select></div>
+              <div><label>Character</label><select id="ndChar"><option>Friendly</option><option>Calm</option><option>Playful</option><option>Shy</option><option>Protective</option></select></div>
+            </div>
+            <div><label>Energy level</label><select id="ndEnergy"><option>🐢 Low – calm strolls</option><option>🚶 Medium – regular walks</option><option>🏃 High – needs to run!</option></select></div>
+            <div>
+              <label>Likes ❤️</label>
+              <div class="likes-grid" id="likesChips">
+                <span class="lchip" onclick="toggleChip(this,'like')">Other dogs</span><span class="lchip" onclick="toggleChip(this,'like')">Kids</span><span class="lchip" onclick="toggleChip(this,'like')">Fetch</span><span class="lchip" onclick="toggleChip(this,'like')">Water</span><span class="lchip" onclick="toggleChip(this,'like')">Cuddles</span><span class="lchip" onclick="toggleChip(this,'like')">Running</span><span class="lchip" onclick="toggleChip(this,'like')">Sniffing</span>
+              </div>
+            </div>
+            <div>
+              <label>Doesn't like 🚫</label>
+              <div class="likes-grid" id="dislikesChips">
+                <span class="lchip" onclick="toggleChip(this,'dislike')">Loud noises</span><span class="lchip" onclick="toggleChip(this,'dislike')">Cats</span><span class="lchip" onclick="toggleChip(this,'dislike')">Bikes</span><span class="lchip" onclick="toggleChip(this,'dislike')">Crowds</span><span class="lchip" onclick="toggleChip(this,'dislike')">Rain</span><span class="lchip" onclick="toggleChip(this,'dislike')">Heat</span>
+              </div>
+            </div>
+            <!-- Photo uploads -->
+            <div>
+              <label>Your photo</label>
+              <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+                <div style="position:relative;cursor:pointer" onclick="document.getElementById('ndAvatarUpload').click()">
+                  <img id="ndAvatarPreview" style="width:64px;height:64px;border-radius:18px;object-fit:cover;display:none;border:2px solid var(--line)"/>
+                  <div id="ndAvatarFallback" class="avatar av-me" style="width:64px;height:64px;font-size:24px;border-radius:18px">📷</div>
+                  <input type="file" id="ndAvatarUpload" accept="image/*" style="display:none" onchange="previewNdAvatar(this)"/>
+                </div>
+                <div style="font-size:12px;color:var(--muted);line-height:1.4">Tap to add your profile photo.<br>Other dog owners will see it.</div>
+              </div>
+            </div>
+            <div>
+              <label>Dog photos (up to 6)</label>
+              <div id="ndPhotoPreviews" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"></div>
+              <div class="photo-up" style="margin-top:8px;height:70px" onclick="document.getElementById('ndDogPhotosUpload').click()">
+                <div style="font-size:22px">📷</div>
+                <div style="font-size:12px;font-weight:700;color:var(--muted)">Tap to upload dog photos</div>
+              </div>
+              <input type="file" id="ndDogPhotosUpload" accept="image/*" multiple style="display:none" onchange="previewNdDogPhotos(this)"/>
+            </div>
+            <button class="btn btn-solid" onclick="saveProfile()">Save profile</button>
+            <p class="small">Your profile will be visible to all PackWalk users in the community.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- MESSAGES (with conversation list) -->
+      <section id="messages" class="screen">
+        <div id="convListView">
+          <div class="sh"><h2>Messages</h2><a href="#" onclick="showScreen('home');return false">Home</a></div>
+          <div id="convList">
+            <!-- populated by JS -->
+          </div>
+        </div>
+        <div id="chatView" style="display:none">
+          <div class="sh"><h2 id="chatTitle" style="cursor:pointer" onclick="if(CURRENT_CHAT && NPC_PROFILES[CURRENT_CHAT])openUserProfile(CURRENT_CHAT)">Chat</h2><a href="#" onclick="backToConvList();return false">← Back</a></div>
+          <div class="card">
+            <div class="chat-list" id="chatList"></div>
+            <div class="composer">
+              <input id="messageInput" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendMessage()"/>
+              <button class="btn btn-accent" style="width:auto;padding:0 16px" onclick="sendMessage()">Send</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- USER PROFILE & SETTINGS -->
+      <section id="profile" class="screen">
+        <div class="sh"><div style="display:flex;align-items:center;gap:10px"><button onclick="openSettings()" style="background:none;border:1.5px solid var(--line);border-radius:12px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s" title="Settings"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button><h2>My profile</h2></div><a href="#" onclick="showScreen('home');return false">Home</a></div>
+        <!-- Profile: NOT created yet -->
+        <div id="profileEmpty" class="card" style="text-align:center;padding:24px">
+          <div style="font-size:40px;margin-bottom:10px">👤</div>
+          <h3>Create your profile</h3>
+          <p>Fill in your details so other dog owners can find and match with you.</p>
+          <button class="btn btn-solid" style="margin-top:12px" onclick="showScreen('dogs');setTimeout(openNewDogProfile,100)">Create a profile</button>
+        </div>
+
+        <!-- Profile: CREATED (hidden by default) -->
+        <div id="profileFilled" class="card" style="display:none">
+          <div class="card-top">
+            <div style="position:relative;cursor:pointer" onclick="document.getElementById('avatarUpload').click()">
+              <img id="profilePhoto" style="width:56px;height:56px;border-radius:18px;object-fit:cover;display:none;border:2px solid var(--line)"/>
+              <div class="avatar av-me" style="width:56px;height:56px;font-size:22px;border-radius:18px" id="profileAvatar">?</div>
+              <div style="position:absolute;bottom:-2px;right:-2px;width:20px;height:20px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;border:2px solid #fff">
+                <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </div>
+              <input type="file" id="avatarUpload" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)"/>
+            </div>
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+                <h3 style="margin:0" id="profileName">Your Name</h3>
+              </div>
+              <p style="font-size:12px;color:var(--muted);margin-bottom:4px" id="profileSub">Complete your profile</p>
+              <div id="profileTags" class="tags" style="margin:4px 0 0"></div>
+            </div>
+          </div>
+          <div id="profilePhotosGallery" style="display:none;margin-top:12px">
+            <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:6px">📸 PHOTOS</div>
+            <div id="profilePhotosList" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px"></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-soft" style="flex:1" onclick="openEditProfile()">✏️ Edit profile</button>
+            <button class="btn btn-ghost" style="flex:none;width:44px;height:44px;padding:0;display:flex;align-items:center;justify-content:center;font-size:18px" onclick="document.getElementById('dogPhotosUpload').click()">📷</button>
+            <input type="file" id="dogPhotosUpload" accept="image/*" multiple style="display:none" onchange="handleDogPhotos(this)"/>
+          </div>
+        </div>
+
+        <!-- My walks section -->
+        <div class="card" id="myWalksCard">
+          <h3>🚶 My walks</h3>
+          <p>Walks you've created or joined.</p>
+          <div id="myWalksList" style="margin-top:8px">
+            <div style="font-size:12px;color:var(--muted);text-align:center;padding:12px">No walks yet. <a href="#" onclick="showScreen('create');return false" style="color:var(--primary);font-weight:700;text-decoration:none">Create one!</a></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>⭐ Rate a recent walk</h3>
+          <p>Completed walks — tap to leave a rating for your walk partner.</p>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border-radius:14px">
+              <div style="font-size:13px;font-weight:700">Anna & Luna · Yesterday</div>
+              <button class="btn btn-soft" style="width:auto;padding:7px 14px;font-size:12px" onclick="openRate('Anna & Luna')">Rate</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>🛡️ Safety</h3>
+          <p>Exact home address is never shown. Only public meetup points are visible in the app.</p>
+          <div class="row" style="margin-top:10px">
+            <button class="btn btn-soft" onclick="openSafety()">Safety guide</button>
+            <button class="btn btn-warning" onclick="openReport()">Report user</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>🚪 Account</h3>
+          <button class="btn btn-ghost" onclick="logOut()">Sign out</button>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- NAV BAR -->
+    <nav class="nav">
+      <button class="nav-btn active" id="nav-home" onclick="showScreen('home')">
+        <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>Home
+      </button>
+      <button class="nav-btn" id="nav-map" onclick="showScreen('map')">
+        <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>Map
+      </button>
+      <button class="nav-btn" id="nav-community" onclick="showScreen('community')">
+        <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>People
+      </button>
+      <button class="nav-btn" id="nav-messages" onclick="showScreen('messages')">
+        <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>Chat
+        <span class="nav-badge" id="chatBadge">2</span>
+      </button>
+      <button class="nav-btn" id="nav-profile" onclick="showScreen('profile')">
+        <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a7.5 7.5 0 0113 0"/></svg></div>Profile
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- NOTIFICATIONS CENTER -->
+  <div class="settings-modal" id="notifModal" onclick="if(event.target===this)closeNotifications()">
+    <div class="settings-sheet" style="max-height:85%">
+      <div class="settings-header">
+        <h3>🔔 Notifications</h3>
+        <button class="safety-close" onclick="closeNotifications()">×</button>
+      </div>
+      <div class="settings-body" style="padding-bottom:20px">
+        <div id="notifList" style="display:flex;flex-direction:column;gap:8px">
+          <div style="text-align:center;padding:30px;color:var(--muted)">
+            <div style="font-size:36px;margin-bottom:8px">🔔</div>
+            <p style="font-size:13px">No notifications yet</p>
+          </div>
+        </div>
+        <button class="btn btn-ghost" style="margin-top:12px;font-size:12px" onclick="clearNotifications()">Clear all</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN PANEL (triple-tap logo to open) -->
+  <div class="settings-modal" id="adminModal" onclick="if(event.target===this)closeAdmin()">
+    <div class="settings-sheet" style="max-height:94%">
+      <div class="settings-header">
+        <h3>📊 Feedback & Reports</h3>
+        <button class="safety-close" onclick="closeAdmin()">×</button>
+      </div>
+      <div class="settings-body">
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <button class="btn btn-solid" style="flex:1;padding:10px;font-size:13px" onclick="loadAdminTab('feedback')">💬 Feedback</button>
+          <button class="btn btn-soft" style="flex:1;padding:10px;font-size:13px" onclick="loadAdminTab('reports')">🚨 Reports</button>
+        </div>
+        <div id="adminContent" style="display:flex;flex-direction:column;gap:10px">
+          <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Loading…</div>
+        </div>
+        <button class="btn btn-ghost" style="margin-top:16px;font-size:12px" onclick="clearAdminData()">🗑️ Clear all data</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT PROFILE MODAL -->
+  <div class="settings-modal" id="editProfileModal" onclick="if(event.target===this)closeEditProfile()">
+    <div class="settings-sheet">
+      <div class="settings-header">
+        <h3>✏️ Edit profile</h3>
+        <button class="safety-close" onclick="closeEditProfile()">×</button>
+      </div>
+      <div class="settings-body">
+        <div class="stack" style="gap:12px">
+          <!-- Avatar photo -->
+          <div style="text-align:center">
+            <div style="position:relative;display:inline-block;cursor:pointer" onclick="document.getElementById('epAvatarUpload').click()">
+              <img id="epAvatarPreview" style="width:80px;height:80px;border-radius:22px;object-fit:cover;display:none;border:2px solid var(--line)"/>
+              <div id="epAvatarFallback" class="avatar av-me" style="width:80px;height:80px;font-size:32px;border-radius:22px">?</div>
+              <div style="position:absolute;bottom:-4px;right:-4px;width:28px;height:28px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;border:3px solid #fff">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </div>
+              <input type="file" id="epAvatarUpload" accept="image/*" style="display:none" onchange="handleEditAvatarUpload(this)"/>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px">Tap to change photo</div>
+          </div>
+          <div class="afield"><label>Your name</label><input class="ob-input" style="margin:0" id="epName" placeholder="Anna"/></div>
+          <div class="afield"><label>Neighbourhood</label><input class="ob-input" style="margin:0" id="epHood" placeholder="Neukölln"/></div>
+          <div class="afield"><label>Dog's name</label><input class="ob-input" style="margin:0" id="epDogName" placeholder="Luna"/></div>
+          <div class="row">
+            <div class="afield"><label>Dog size</label>
+              <select class="ob-select" style="margin:0" id="epDogSize">
+                <option value="">Size…</option><option>Small</option><option>Medium</option><option>Large</option>
+              </select>
+            </div>
+            <div class="afield"><label>Character</label>
+              <select class="ob-select" style="margin:0" id="epDogChar">
+                <option value="">Type…</option><option>Friendly</option><option>Calm</option><option>Playful</option><option>Shy</option><option>Protective</option>
+              </select>
+            </div>
+          </div>
+          <div class="afield"><label>About your dog</label><textarea class="ob-input" style="margin:0;min-height:80px;resize:none" id="epDogDesc" placeholder="Calm and curious…"></textarea></div>
+          <button class="btn btn-solid" onclick="saveEditProfile()">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT WALK MODAL -->
+  <div class="settings-modal" id="editWalkModal" onclick="if(event.target===this)closeEditWalk()">
+    <div class="settings-sheet">
+      <div class="settings-header">
+        <h3>✏️ Edit walk</h3>
+        <button class="safety-close" onclick="closeEditWalk()">×</button>
+      </div>
+      <div class="settings-body">
+        <div class="stack" style="gap:12px">
+          <div class="row">
+            <div class="afield"><label>Your name</label><input class="ob-input" style="margin:0" id="ewOwner"/></div>
+            <div class="afield"><label>Dog name</label><input class="ob-input" style="margin:0" id="ewDog"/></div>
+          </div>
+          <div class="row">
+            <div class="afield"><label>Time</label><input class="ob-input" style="margin:0" id="ewTime"/></div>
+            <div class="afield"><label>Dog size</label>
+              <select class="ob-select" style="margin:0" id="ewSize"><option>Small</option><option>Medium</option><option>Large</option></select>
+            </div>
+          </div>
+          <div class="afield"><label>Meetup spot</label>
+            <select class="ob-select" style="margin:0" id="ewLocation">
+              <option>Volkspark Hasenheide</option><option>Tempelhofer Feld</option><option>Körnerpark entrance</option><option>Richardplatz</option><option>Hermannplatz</option><option>Pflügerstraße Café</option>
+            </select>
+          </div>
+          <div class="afield"><label>Character</label>
+            <select class="ob-select" style="margin:0" id="ewTemp"><option>Friendly</option><option>Calm</option><option>Playful</option><option>Shy</option></select>
+          </div>
+          <div class="afield"><label>Note</label><textarea class="ob-input" style="margin:0;min-height:60px;resize:none" id="ewNote"></textarea></div>
+          <button class="btn btn-solid" onclick="saveEditWalk()">Save changes</button>
+          <button class="btn btn-ghost" style="color:var(--danger)" onclick="deleteWalk()">Delete walk</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- USER PROFILE VIEWER MODAL -->
+  <div class="user-profile-modal" id="userProfileModal" onclick="if(event.target===this)closeUserProfile()">
+    <div class="up-sheet">
+      <div class="up-header">
+        <button class="up-close" onclick="closeUserProfile()">×</button>
+        <div class="up-avatar av-orange" id="upAvatar">A</div>
+        <div class="up-name" id="upName">Anna & Luna</div>
+        <div class="up-sub" id="upSub">Neukölln · Small · Friendly</div>
+        <div id="upVerified" style="margin-bottom:4px"></div>
+        <div class="rating-row" id="upRating" style="margin-top:4px"></div>
+        <div class="tags" id="upTags" style="margin-top:8px"></div>
+      </div>
+      <div class="up-body">
+        <div id="upDesc" style="font-size:14px;line-height:1.55"></div>
+        <div id="upLikesSection">
+          <div class="up-section-label">Likes ❤️</div>
+          <div class="likes-grid" id="upLikes"></div>
+        </div>
+        <div id="upDislikesSection">
+          <div class="up-section-label">Doesn't like 🚫</div>
+          <div class="likes-grid" id="upDislikes"></div>
+        </div>
+        <div id="upSocials" class="socials"></div>
+        <div class="row" style="margin-top:4px">
+          <button class="btn btn-solid" id="upJoinBtn" onclick="">Join walk</button>
+          <button class="btn btn-soft" id="upMsgBtn" onclick="">Message</button>
+        </div>
+        <button class="btn btn-warning" id="upReportBtn" style="margin-top:4px" onclick="">🚨 Report user</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAFETY MODAL -->
+  <div class="safety-modal" id="safetyModal" onclick="if(event.target===this)closeSafety()">
+    <div class="safety-sheet">
+      <div class="safety-header"><h3>🛡️ Safety Guide</h3><button class="safety-close" onclick="closeSafety()">×</button></div>
+      <div class="safety-body">
+        <div class="safety-tip"><div class="stip-ico">📍</div><div><div class="stip-title">Always choose public meetup spots</div><div class="stip-text">Meet at the marked spots — parks, café entrances, squares. Never at someone's home for the first meeting.</div></div></div>
+        <div class="safety-tip green"><div class="stip-ico">👁️</div><div><div class="stip-title">Check the profile before going</div><div class="stip-text">Review social links, photos, and past walk ratings. Verified users have a blue badge — prioritise them.</div></div></div>
+        <div class="safety-tip yellow"><div class="stip-ico">🐕</div><div><div class="stip-title">Dog interaction etiquette</div><div class="stip-text">Let dogs sniff from a distance first. Keep the leash until both dogs are clearly comfortable.</div></div></div>
+        <div class="safety-tip green"><div class="stip-ico">💬</div><div><div class="stip-title">Chat before meeting</div><div class="stip-text">Exchange a few messages first. Any hesitation — trust your gut and reschedule.</div></div></div>
+        <div class="safety-tip red"><div class="stip-ico">🚨</div><div><div class="stip-title">If something feels wrong</div><div class="stip-text">Leave calmly. Use the "Report" button on any profile. Your safety always comes first.</div></div></div>
+        <button class="btn btn-solid" style="margin-top:4px" onclick="closeSafety()">Got it — stay safe 🐾</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RATE WALK MODAL -->
+  <div class="rate-modal" id="rateModal" onclick="if(event.target===this)closeRate()">
+    <div class="rate-sheet">
+      <h3>⭐ Rate this walk</h3>
+      <p id="rateWalkName">How was your walk?</p>
+      <div class="rate-stars-big" id="rateStars">
+        <span class="star on" onclick="setRating(1)">⭐</span><span class="star on" onclick="setRating(2)">⭐</span><span class="star on" onclick="setRating(3)">⭐</span><span class="star off" onclick="setRating(4)">⭐</span><span class="star off" onclick="setRating(5)">⭐</span>
+      </div>
+      <div class="row">
+        <button class="btn btn-ghost" onclick="closeRate()">Skip</button>
+        <button class="btn btn-solid" onclick="submitRate()">Submit rating</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEEDBACK MODAL -->
+
+  <!-- REPORT USER MODAL -->
+  <div class="feedback-modal" id="reportModal" onclick="if(event.target===this)closeReport()">
+    <div class="feedback-sheet">
+      <h3>🚨 Report a user</h3>
+      <p>Help us keep PackWalk safe. Select a reason below.</p>
+      <div class="fb-opts" id="reportOpts">
+        <button class="fb-opt" onclick="selReport(this)">😟 Uncomfortable behavior</button>
+        <button class="fb-opt" onclick="selReport(this)">🚫 Fake profile</button>
+        <button class="fb-opt" onclick="selReport(this)">🐕 Aggressive dog</button>
+        <button class="fb-opt" onclick="selReport(this)">📍 Wrong location</button>
+        <button class="fb-opt" onclick="selReport(this)">💬 Inappropriate messages</button>
+        <button class="fb-opt" onclick="selReport(this)">⚠️ Other concern</button>
+      </div>
+      <label style="font-size:12px;font-weight:800;display:block;margin-bottom:6px">Which user? (optional)</label>
+      <select class="ob-select" id="reportUser" style="margin-bottom:10px">
+        <option value="">Select user…</option>
+        <option>Anna & Luna</option>
+        <option>Max & Bruno</option>
+        <option>Julia & Coco</option>
+        <option>Sophie & Milo</option>
+      </select>
+      <textarea class="fb-textarea" id="reportText" placeholder="Tell us what happened… (optional)"></textarea>
+      <div class="row">
+        <button class="btn btn-ghost" onclick="closeReport()">Cancel</button>
+        <button class="btn btn-solid" style="background:var(--danger)" onclick="submitReport()">Send report</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- GEAR SETTINGS BUTTON -->
+  <!-- SETTINGS MODAL -->
+  <div class="settings-modal" id="settingsModal" onclick="if(event.target===this)closeSettings()">
+    <div class="settings-sheet">
+      <div class="settings-header">
+        <h3 data-i18n="settings_title">⚙️ Settings</h3>
+        <button class="safety-close" onclick="closeSettings()">×</button>
+      </div>
+      <div class="settings-body">
+        <div class="setting-row">
+          <div><div class="setting-label" data-i18n="setting_visible">Visible on map</div><div class="setting-sub" data-i18n="setting_visible_sub">Other owners can see you</div></div>
+          <button class="toggle on" id="toggleVisible" onclick="toggleSetting(this,'visible')"></button>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label" data-i18n="setting_radius">Search radius</div><div class="setting-sub" data-i18n="setting_radius_sub">Show walkers within…</div></div>
+          <select id="settingRadius" onchange="saveSetting('radius',this.value)" style="padding:7px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:700;color:var(--primary);background:#fff;outline:none">
+            <option value="1">1 km</option>
+            <option value="2" selected>2 km</option>
+            <option value="3">3 km</option>
+            <option value="5">5 km</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label" data-i18n="setting_push">Push notifications</div><div class="setting-sub" data-i18n="setting_push_sub">Walk requests & messages</div></div>
+          <button class="toggle on" id="togglePush" onclick="toggleSetting(this,'push')"></button>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label" data-i18n="setting_time">Walk time preference</div><div class="setting-sub" data-i18n="setting_time_sub">When do you usually walk?</div></div>
+          <select id="settingTime" onchange="saveSetting('walktime',this.value)" style="padding:7px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:700;color:var(--primary);background:#fff;outline:none">
+            <option value="morning" data-i18n-opt="time_morning">Morning</option>
+            <option value="afternoon" data-i18n-opt="time_afternoon">Afternoon</option>
+            <option value="evening" selected data-i18n-opt="time_evening">Evening</option>
+            <option value="any" data-i18n-opt="time_any">Any time</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label" data-i18n="setting_lang">Language</div><div class="setting-sub" data-i18n="setting_lang_sub">App display language</div></div>
+          <select id="settingLang" onchange="changeLanguage(this.value)" style="padding:7px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:700;color:var(--primary);background:#fff;outline:none">
+            <option value="en" selected>English</option>
+            <option value="de">Deutsch</option>
+            <option value="ru">Русский</option>
+          </select>
+        </div>
+        <div id="settingsSaved" style="display:none;margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<script>
+// ════════════════════════════════════
+// STORAGE: Persistent user data
+// ════════════════════════════════════
+// Storage: use window.storage (Claude artifacts) if available, otherwise localStorage
+const _hasClaudeStorage = typeof window.storage !== 'undefined' && window.storage && typeof window.storage.get === 'function';
+
+const STORAGE = {
+  async get(key) {
+    try {
+      if (_hasClaudeStorage) { const r = await window.storage.get(key); return r ? JSON.parse(r.value) : null; }
+      const v = localStorage.getItem('pw_' + key); return v ? JSON.parse(v) : null;
+    } catch(e) { return null; }
+  },
+  async set(key, val) {
+    try {
+      if (_hasClaudeStorage) { await window.storage.set(key, JSON.stringify(val)); return; }
+      localStorage.setItem('pw_' + key, JSON.stringify(val));
+    } catch(e) { console.warn('Storage set failed:', e); }
+  },
+  async getShared(key) {
+    try {
+      if (_hasClaudeStorage) { const r = await window.storage.get(key, true); return r ? JSON.parse(r.value) : null; }
+      const v = localStorage.getItem('pw_s_' + key); return v ? JSON.parse(v) : null;
+    } catch(e) { return null; }
+  },
+  async setShared(key, val) {
+    try {
+      if (_hasClaudeStorage) { await window.storage.set(key, JSON.stringify(val), true); return; }
+      localStorage.setItem('pw_s_' + key, JSON.stringify(val));
+    } catch(e) { console.warn('Shared storage set failed:', e); }
+  },
+  async listShared(prefix) {
+    try {
+      if (_hasClaudeStorage) { const r = await window.storage.list(prefix, true); return r ? r.keys : []; }
+      const keys = []; const pre = 'pw_s_' + prefix;
+      for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith(pre)) keys.push(k.slice(4)); }
+      return keys;
+    } catch(e) { return []; }
+  }
+};
+
+// In-memory fallback if storage is unavailable
+let MY_PROFILE = null;
+let MY_WALKS = [];
+let CONVERSATIONS = {};
+let CURRENT_CHAT = null;
+
+// ════════════════════════════════════
+// SPLASH
+// ════════════════════════════════════
+// App launch splash → fade to onboard form
+(function initLaunch(){
+  setTimeout(() => {
+    const splash = document.getElementById('launchSplash');
+    splash.style.opacity = '0';
+    setTimeout(() => splash.style.display = 'none', 500);
+  }, 1800);
+})();
+
+// ════════════════════════════════════
+// DATA
+// ════════════════════════════════════
+const DOGS = [
+  { name:'Luna', owner:'Anna', sub:'Small · Friendly', fallback:'🐕', dp:'dp1', seed:200,
+    likes:['Cuddles','Morning walks','Other dogs'], dislikes:['Loud noises','Bikes'],
+    desc:'Calm and curious. Loves meeting new dogs at the park. Best after 17:00.' },
+  { name:'Bruno', owner:'Max', sub:'Medium · Playful', fallback:'🐩', dp:'dp2', seed:201,
+    likes:['Fetch','Water','Big groups'], dislikes:['Cats','Tight spaces'],
+    desc:'High energy. Needs space to run. Loves group walks at Hasenheide.' },
+  { name:'Coco', owner:'Julia', sub:'Small · Shy', fallback:'🦮', dp:'dp3', seed:202,
+    likes:['Quiet walks','Treats','Sniffing'], dislikes:['Crowds','Strangers'],
+    desc:'Gentle and shy. Needs a slow intro. Prefers one-to-one walks.' },
+  { name:'Milo', owner:'Sophie', sub:'Large · Social', fallback:'🐶', dp:'dp4', seed:203,
+    likes:['Running','Other dogs','Kids'], dislikes:['Rain','Waiting'],
+    desc:'Social butterfly. Loves everyone. Morning runs at Tempelhofer Feld.' },
+  { name:'Nyx', owner:'Anya', sub:'Small · Calm', fallback:'🐾', dp:'dp5', seed:204,
+    likes:['Evening walks','Calm dogs','Parks'], dislikes:['Loud dogs','Heat'],
+    desc:'My quiet companion. Loves Körnerpark evenings. Very gentle.' },
+];
+
+// NPC personas for smart chat
+const NPC_PERSONAS = {
+  'Anna & Luna': { dog:'Luna', size:'small', char:'friendly', style:'warm and enthusiastic, uses emojis, talks about Luna a lot, mentions Körnerpark as her favorite spot', location:'Körnerpark' },
+  'Max & Bruno': { dog:'Bruno', size:'medium', char:'playful', style:'chill and laid-back bro vibes, short sentences, talks about running and fetch', location:'Hasenheide' },
+  'Julia & Coco': { dog:'Coco', size:'small', char:'shy', style:'careful and considerate, asks a lot of questions, worried about her shy dog, prefers quiet meetups', location:'Richardplatz' },
+  'Sophie & Milo': { dog:'Milo', size:'large', char:'social', style:'energetic and organized, morning person, always suggests specific times and places', location:'Tempelhofer Feld' },
+};
+
+// Full NPC profiles for profile viewer
+const NPC_PROFILES = {
+  'Anna & Luna': {
+    avatar:'av-orange', letter:'A', name:'Anna & Luna', sub:'Neukölln · Körnerpark',
+    verified:true, rating:4.0, walks:12,
+    tags:['Small dog','Friendly','Evening walks'],
+    desc:'I\'m Anna, living in Neukölln near Körnerpark. Luna is my 3-year-old Dachshund — calm, curious, and loves meeting new dogs. We walk every evening around 18:00. Always in public spots!',
+    likes:['Cuddles','Morning walks','Other dogs','Sniffing'],
+    dislikes:['Loud noises','Bikes','Crowds'],
+    socials:['Instagram','Telegram'],
+    spot:'Körnerpark entrance', walkDetails:'Anna & Luna · Today 18:30 · Small dog · Friendly'
+  },
+  'Max & Bruno': {
+    avatar:'av-teal', letter:'M', name:'Max & Bruno', sub:'Neukölln · Hasenheide',
+    verified:false, rating:4.8, walks:7,
+    tags:['Medium dog','Playful','Group walks'],
+    desc:'Max here. Bruno is a 2-year-old Border Collie mix — super playful, high energy, loves fetch and water. We do group walks at Hasenheide almost every day. The more dogs the better!',
+    likes:['Fetch','Water','Big groups','Running'],
+    dislikes:['Cats','Tight spaces'],
+    socials:['Telegram'],
+    spot:'Volkspark Hasenheide – main entrance', walkDetails:'Max & Bruno · Today 19:00 · Medium dog · Playful'
+  },
+  'Julia & Coco': {
+    avatar:'av-orange', letter:'J', name:'Julia & Coco', sub:'Neukölln · Richardplatz',
+    verified:false, rating:3.5, walks:3,
+    tags:['Small dog','Shy','Quiet meetups'],
+    desc:'Julia with Coco, a shy little Chihuahua mix. She needs a slow intro — prefers one-to-one walks in quiet spots. We love Richardplatz in the evenings. Please be patient with her!',
+    likes:['Quiet walks','Treats','Sniffing'],
+    dislikes:['Crowds','Strangers','Loud dogs'],
+    socials:['Telegram'],
+    spot:'Richardplatz – fountain', walkDetails:'Julia & Coco · Today 20:00 · Small dog · Shy'
+  },
+  'Sophie & Milo': {
+    avatar:'av-purple', letter:'S', name:'Sophie & Milo', sub:'Neukölln · Tempelhofer Feld',
+    verified:true, rating:4.2, walks:5,
+    tags:['Large dog','Social','Morning runs'],
+    desc:'Sophie & Milo — he\'s a big Golden Retriever who loves everyone: dogs, kids, strangers. We do morning runs at Tempelhofer Feld. He needs space to run! Verified profile, Instagram linked.',
+    likes:['Running','Other dogs','Kids','Mornings'],
+    dislikes:['Rain','Waiting','Small spaces'],
+    socials:['Instagram'],
+    spot:'Tempelhofer Feld – north entrance', walkDetails:'Sophie & Milo · Tomorrow 09:00 · Large dog · Social'
+  },
+};
+
+function openUserProfile(nameKey) {
+  const p = NPC_PROFILES[nameKey];
+  if (!p) return;
+
+  document.getElementById('upAvatar').className = 'up-avatar ' + p.avatar;
+  document.getElementById('upAvatar').textContent = p.letter;
+  document.getElementById('upName').textContent = p.name;
+  document.getElementById('upSub').textContent = p.sub;
+  document.getElementById('upVerified').innerHTML = p.verified
+    ? '<span class="verified-badge"><svg viewBox="0 0 12 12" style="width:9px;height:9px;fill:#fff"><path d="M6 1l1.5 2.5L10 4l-2 2 .5 3L6 7.5 3.5 9l.5-3L2 4l2.5-.5z"/></svg>Verified</span>'
+    : '';
+  document.getElementById('upRating').innerHTML = `<div class="stars">${'<span class="star on">⭐</span>'.repeat(Math.round(p.rating))}${'<span class="star off">⭐</span>'.repeat(5-Math.round(p.rating))}</div><span class="rating-count">${p.rating} · ${p.walks} walks</span>`;
+  document.getElementById('upTags').innerHTML = p.tags.map((t,i) => `<span class="tag ${['blue','green','yellow'][i%3]}">${t}</span>`).join('');
+  document.getElementById('upDesc').textContent = p.desc;
+  document.getElementById('upLikes').innerHTML = p.likes.map(l => `<span class="lchip sl">${l}</span>`).join('');
+  document.getElementById('upDislikes').innerHTML = p.dislikes.map(l => `<span class="lchip sd">${l}</span>`).join('');
+  document.getElementById('upSocials').innerHTML = p.socials.map(s => `<a class="social-link" href="#">${s}</a>`).join('');
+
+  const esc = nameKey.replace(/'/g, "\\'");
+  document.getElementById('upJoinBtn').setAttribute('onclick', `closeUserProfile();openConfirm('${esc}','${p.spot}','${p.walkDetails}')`);
+  document.getElementById('upMsgBtn').setAttribute('onclick', `closeUserProfile();openConversation('${esc}')`);
+  document.getElementById('upReportBtn').setAttribute('onclick', `closeUserProfile();openReport('${esc}')`);
+
+  document.getElementById('userProfileModal').classList.add('on');
+}
+
+function closeUserProfile() {
+  document.getElementById('userProfileModal').classList.remove('on');
+}
+
+// Default conversations
+const DEFAULT_CONVOS = [
+  { name: 'Anna & Luna', avatar: 'av-orange', letter: 'A', lastMsg: 'Great. Luna is calm today 🐾', unread: true,
+    history: [
+      { from:'them', text:'Hi! I\'m near the main park entrance. Easy to find.' },
+      { from:'me', text:'Perfect. On my way, 5 min.' },
+      { from:'them', text:'Great. Luna is calm today 🐾' },
+    ]},
+  { name: 'Max & Bruno', avatar: 'av-teal', letter: 'M', lastMsg: 'Let\'s meet at the big tree!', unread: true,
+    history: [
+      { from:'them', text:'Hey! Bruno is super excited for a walk today' },
+      { from:'them', text:'Let\'s meet at the big tree!' },
+    ]},
+];
+
+// ════════════════════════════════════
+// INIT: Load saved data
+// ════════════════════════════════════
+async function loadSavedData() {
+  MY_PROFILE = await STORAGE.get('my-profile');
+  MY_WALKS = (await STORAGE.get('my-walks')) || [];
+  CONVERSATIONS = (await STORAGE.get('conversations')) || {};
+  
+  // Seed default conversations if empty
+  if (Object.keys(CONVERSATIONS).length === 0) {
+    DEFAULT_CONVOS.forEach(c => {
+      CONVERSATIONS[c.name] = { avatar: c.avatar, letter: c.letter, history: c.history, unread: c.unread };
+    });
+    await STORAGE.set('conversations', CONVERSATIONS);
+  }
+}
+
+// ════════════════════════════════════
+// PROFILE MANAGEMENT
+// ════════════════════════════════════
+async function saveMyProfile(data) {
+  MY_PROFILE = data;
+  await STORAGE.set('my-profile', data);
+  // Also publish to shared community
+  const uid = MY_PROFILE.uid || ('user_' + Date.now());
+  MY_PROFILE.uid = uid;
+  await STORAGE.set('my-profile', MY_PROFILE);
+  await STORAGE.setShared('community:' + uid, { ...MY_PROFILE, joinedAt: Date.now() });
+  updateProfileUI();
+  renderCommunity();
+}
+
+function updateProfileUI() {
+  const empty = document.getElementById('profileEmpty');
+  const filled = document.getElementById('profileFilled');
+  const hasProfile = MY_PROFILE && MY_PROFILE.dogName;
+  
+  if (!hasProfile) {
+    // Show "Create profile", hide filled card
+    empty.style.display = 'block';
+    filled.style.display = 'none';
+    return;
+  }
+  
+  // Profile exists — show filled card, hide CTA
+  empty.style.display = 'none';
+  filled.style.display = 'block';
+  
+  const p = MY_PROFILE;
+  document.getElementById('profileName').textContent = (p.ownerName || 'You') + ' · ' + (p.hood || 'Neukölln');
+  document.getElementById('profileSub').textContent = `${p.dogName} · ${p.dogSize || 'Dog'} · ${p.dogChar || ''}`;
+  
+  const tags = document.getElementById('profileTags');
+  tags.innerHTML = '';
+  if (p.dogSize) tags.innerHTML += `<span class="tag blue">${p.dogSize}</span>`;
+  if (p.dogChar) tags.innerHTML += `<span class="tag green">${p.dogChar}</span>`;
+  
+  renderProfileAvatar();
+  renderProfilePhotos();
+  loadCommunityCount();
+}
+
+async function loadCommunityCount() {
+  const keys = await STORAGE.listShared('community:');
+  const total = keys.length + 5; // +5 for built-in NPCs
+  document.getElementById('nearbyPill').textContent = total + ' walkers nearby';
+}
+
+// ════════════════════════════════════
+// WALK CREATION (persisted + shows in profile)
+// ════════════════════════════════════
+function createWalk() {
+  const o = document.getElementById('owner').value.trim();
+  const d = document.getElementById('dog').value.trim();
+  const t = document.getElementById('time').value.trim();
+  const l = document.getElementById('location').value;
+  if (!o || !d || !t) {
+    document.getElementById('createMessage').innerHTML = '<div class="success" style="background:#fff4e8;border-color:#ffe0b1;color:#9b6410">Fill in the key fields first.</div>';
+    return;
+  }
+  
+  const walk = {
+    id: 'walk_' + Date.now(),
+    owner: o,
+    dog: d,
+    time: t,
+    location: l,
+    size: document.getElementById('size').value,
+    temperament: document.getElementById('temperament').value,
+    note: document.getElementById('note').value,
+    createdAt: Date.now(),
+    status: 'active'
+  };
+  
+  MY_WALKS.push(walk);
+  STORAGE.set('my-walks', MY_WALKS);
+  
+  // Show success briefly
+  document.getElementById('createMessage').innerHTML = `<div class="success">✅ Walk published! Redirecting to your profile…<br><br><strong>${o} & ${d}</strong><br>${t} · ${l}<br>${walk.size} dog · ${walk.temperament}</div>`;
+  
+  // Update profile walks
+  renderUserWalks();
+  renderMyWalksInProfile();
+  
+  // Clear form
+  document.getElementById('time').value = '';
+  document.getElementById('note').value = '';
+  
+  // Redirect to profile after short delay to show the walk there
+  setTimeout(() => {
+    document.getElementById('createMessage').innerHTML = '';
+    showScreen('profile');
+    // Scroll to my walks
+    const walksCard = document.getElementById('myWalksCard');
+    if (walksCard) walksCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 1500);
+}
+
+function renderUserWalks() {
+  const container = document.getElementById('userWalksSection');
+  if (MY_WALKS.length === 0) { container.innerHTML = ''; return; }
+  
+  let html = '<div class="sh" style="margin-top:16px"><h2>Your walks</h2></div>';
+  MY_WALKS.forEach(w => {
+    html += `<div class="card">
+      <div class="card-top">
+        <div class="avatar av-me">${(w.owner||'?')[0]}</div>
+        <div>
+          <h3 style="margin:0">${w.owner} & ${w.dog}</h3>
+          <p style="margin:0;font-size:12px;color:var(--muted)">${w.location} · ${w.time}</p>
+        </div>
+      </div>
+      <div class="tags"><span class="tag blue">${w.size} dog</span><span class="tag green">${w.temperament}</span><span class="tag yellow">Your walk</span></div>
+      ${w.note ? `<p>${w.note}</p>` : ''}
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function renderMyWalksInProfile() {
+  const container = document.getElementById('myWalksList');
+  if (MY_WALKS.length === 0) {
+    container.innerHTML = '<div style="font-size:12px;color:var(--muted);text-align:center;padding:12px">No walks yet. <a href="#" onclick="showScreen(\'create\');return false" style="color:var(--primary);font-weight:700;text-decoration:none">Create one!</a></div>';
+    return;
+  }
+  
+  container.innerHTML = MY_WALKS.map((w, i) => `
+    <div class="my-walk-item" style="cursor:pointer" onclick="openEditWalk(${i})">
+      <div style="flex:1">
+        <div class="mw-info">${w.owner} & ${w.dog}</div>
+        <div class="mw-sub">${w.location} · ${w.time}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="mw-status">${w.status === 'active' ? '🟢 Active' : 'Done'}</div>
+        <span style="font-size:14px;color:var(--muted)">✏️</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ════════════════════════════════════
+// EDIT PROFILE
+// ════════════════════════════════════
+function openEditProfile() {
+  const p = MY_PROFILE || {};
+  document.getElementById('epName').value = p.ownerName || '';
+  document.getElementById('epHood').value = p.hood || '';
+  document.getElementById('epDogName').value = p.dogName || '';
+  document.getElementById('epDogSize').value = p.dogSize || '';
+  document.getElementById('epDogChar').value = p.dogChar || '';
+  document.getElementById('epDogDesc').value = p.dogDesc || '';
+  // Show avatar preview in edit modal
+  const preview = document.getElementById('epAvatarPreview');
+  const fallback = document.getElementById('epAvatarFallback');
+  if (p.avatarData) {
+    preview.src = p.avatarData; preview.style.display = 'block'; fallback.style.display = 'none';
+  } else {
+    preview.style.display = 'none'; fallback.style.display = 'flex';
+    fallback.textContent = (p.ownerName || '?')[0].toUpperCase();
+  }
+  document.getElementById('editProfileModal').classList.add('on');
+}
+function closeEditProfile() { document.getElementById('editProfileModal').classList.remove('on'); }
+async function saveEditProfile() {
+  const updated = {
+    ...(MY_PROFILE || {}),
+    ownerName: document.getElementById('epName').value.trim() || 'User',
+    hood: document.getElementById('epHood').value.trim() || 'Neukölln',
+    dogName: document.getElementById('epDogName').value.trim(),
+    dogSize: document.getElementById('epDogSize').value,
+    dogChar: document.getElementById('epDogChar').value,
+    dogDesc: document.getElementById('epDogDesc').value.trim(),
+  };
+  await saveMyProfile(updated);
+  closeEditProfile();
+  document.getElementById('owner').value = updated.ownerName;
+  document.getElementById('dog').value = updated.dogName;
+  renderProfilePhotos();
+  const s = document.createElement('div'); s.className='success'; s.textContent='✅ Profile updated!';
+  document.getElementById('profile').insertBefore(s, document.getElementById('profileFilled').nextSibling);
+  setTimeout(()=>s.remove(), 2500);
+}
+
+// ════════════════════════════════════
+// PHOTO HANDLING
+// ════════════════════════════════════
+function fileToDataURL(file, maxSize) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const max = maxSize || 400;
+        let w = img.width, h = img.height;
+        if (w > h) { if (w > max) { h = h * max / w; w = max; } }
+        else { if (h > max) { w = w * max / h; h = max; } }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleAvatarUpload(input) {
+  if (!input.files || !input.files[0]) return;
+  const dataURL = await fileToDataURL(input.files[0], 200);
+  MY_PROFILE = MY_PROFILE || {};
+  MY_PROFILE.avatarData = dataURL;
+  await STORAGE.set('my-profile', MY_PROFILE);
+  renderProfileAvatar();
+  input.value = '';
+}
+
+async function handleEditAvatarUpload(input) {
+  if (!input.files || !input.files[0]) return;
+  const dataURL = await fileToDataURL(input.files[0], 200);
+  MY_PROFILE = MY_PROFILE || {};
+  MY_PROFILE.avatarData = dataURL;
+  await STORAGE.set('my-profile', MY_PROFILE);
+  // Update preview in modal
+  const preview = document.getElementById('epAvatarPreview');
+  const fallback = document.getElementById('epAvatarFallback');
+  preview.src = dataURL; preview.style.display = 'block'; fallback.style.display = 'none';
+  renderProfileAvatar();
+  input.value = '';
+}
+
+async function handleDogPhotos(input) {
+  if (!input.files || input.files.length === 0) return;
+  MY_PROFILE = MY_PROFILE || {};
+  if (!MY_PROFILE.dogPhotos) MY_PROFILE.dogPhotos = [];
+  
+  for (const file of input.files) {
+    if (MY_PROFILE.dogPhotos.length >= 6) break; // max 6 photos
+    const dataURL = await fileToDataURL(file, 600);
+    MY_PROFILE.dogPhotos.push(dataURL);
+  }
+  
+  await STORAGE.set('my-profile', MY_PROFILE);
+  renderProfilePhotos();
+  input.value = '';
+  const s = document.createElement('div'); s.className='success'; s.textContent='📸 Photo added!';
+  document.getElementById('profile').insertBefore(s, document.getElementById('profileFilled').nextSibling);
+  setTimeout(()=>s.remove(), 2000);
+}
+
+function deletePhoto(idx) {
+  if (!MY_PROFILE || !MY_PROFILE.dogPhotos) return;
+  MY_PROFILE.dogPhotos.splice(idx, 1);
+  STORAGE.set('my-profile', MY_PROFILE);
+  renderProfilePhotos();
+}
+
+function renderProfileAvatar() {
+  if (!MY_PROFILE) return;
+  const photo = document.getElementById('profilePhoto');
+  const avatar = document.getElementById('profileAvatar');
+  if (MY_PROFILE.avatarData) {
+    photo.src = MY_PROFILE.avatarData;
+    photo.style.display = 'block';
+    avatar.style.display = 'none';
+  } else {
+    photo.style.display = 'none';
+    avatar.style.display = 'flex';
+    avatar.textContent = (MY_PROFILE.ownerName || '?')[0].toUpperCase();
+  }
+}
+
+function renderProfilePhotos() {
+  const gallery = document.getElementById('profilePhotosGallery');
+  const list = document.getElementById('profilePhotosList');
+  if (!MY_PROFILE || !MY_PROFILE.dogPhotos || MY_PROFILE.dogPhotos.length === 0) {
+    gallery.style.display = 'none';
+    return;
+  }
+  gallery.style.display = 'block';
+  list.innerHTML = MY_PROFILE.dogPhotos.map((src, i) => `
+    <div style="position:relative;flex:none">
+      <img src="${src}" style="width:80px;height:80px;border-radius:14px;object-fit:cover;border:1px solid var(--line)"/>
+      <button onclick="deletePhoto(${i})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">×</button>
+    </div>
+  `).join('') + `
+    <div onclick="document.getElementById('dogPhotosUpload').click()" style="width:80px;height:80px;border-radius:14px;border:2px dashed var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;flex:none;gap:2px;transition:.15s">
+      <span style="font-size:20px">+</span>
+      <span style="font-size:9px;color:var(--muted);font-weight:700">Add</span>
+    </div>
+  `;
+}
+
+// ════════════════════════════════════
+// EDIT WALK
+// ════════════════════════════════════
+let editingWalkIndex = -1;
+function openEditWalk(idx) {
+  editingWalkIndex = idx;
+  const w = MY_WALKS[idx];
+  if (!w) return;
+  document.getElementById('ewOwner').value = w.owner || '';
+  document.getElementById('ewDog').value = w.dog || '';
+  document.getElementById('ewTime').value = w.time || '';
+  document.getElementById('ewSize').value = w.size || 'Small';
+  document.getElementById('ewLocation').value = w.location || '';
+  document.getElementById('ewTemp').value = w.temperament || 'Friendly';
+  document.getElementById('ewNote').value = w.note || '';
+  document.getElementById('editWalkModal').classList.add('on');
+}
+function closeEditWalk() { document.getElementById('editWalkModal').classList.remove('on'); editingWalkIndex = -1; }
+function saveEditWalk() {
+  if (editingWalkIndex < 0 || !MY_WALKS[editingWalkIndex]) return;
+  MY_WALKS[editingWalkIndex] = {
+    ...MY_WALKS[editingWalkIndex],
+    owner: document.getElementById('ewOwner').value.trim(),
+    dog: document.getElementById('ewDog').value.trim(),
+    time: document.getElementById('ewTime').value.trim(),
+    size: document.getElementById('ewSize').value,
+    location: document.getElementById('ewLocation').value,
+    temperament: document.getElementById('ewTemp').value,
+    note: document.getElementById('ewNote').value.trim(),
+  };
+  STORAGE.set('my-walks', MY_WALKS);
+  closeEditWalk();
+  renderMyWalksInProfile();
+  renderUserWalks();
+  const s = document.createElement('div'); s.className='success'; s.textContent='✅ Walk updated!';
+  document.getElementById('profile').insertBefore(s, document.getElementById('myWalksCard'));
+  setTimeout(()=>s.remove(), 2500);
+}
+function deleteWalk() {
+  if (editingWalkIndex < 0) return;
+  MY_WALKS.splice(editingWalkIndex, 1);
+  STORAGE.set('my-walks', MY_WALKS);
+  closeEditWalk();
+  renderMyWalksInProfile();
+  renderUserWalks();
+  const s = document.createElement('div'); s.className='success'; s.style.background='#fff0f0'; s.style.borderColor='#ffc9c9'; s.style.color='#a33';
+  s.textContent='🗑️ Walk deleted.';
+  document.getElementById('profile').insertBefore(s, document.getElementById('myWalksCard'));
+  setTimeout(()=>s.remove(), 2500);
+}
+
+// ════════════════════════════════════
+// COMMUNITY: Swipe cards + List view
+// ════════════════════════════════════
+const COMMUNITY_PROFILES = [
+  { name:'Anna', dog:'Luna', size:'Small', char:'Friendly', loc:'Körnerpark', dist:'0.8 km', energy:'🚶 Medium',
+    desc:'Calm and curious. Loves meeting new dogs at the park. Best after 17:00. Instagram & Telegram linked.',
+    likes:['Cuddles','Morning walks','Other dogs'], dislikes:['Loud noises','Bikes'],
+    letter:'A', av:'av-orange', dp:'dp1', emoji:'🐕', verified:true, rating:'4.0', walks:'12' },
+  { name:'Max', dog:'Bruno', size:'Medium', char:'Playful', loc:'Volkspark Hasenheide', dist:'1.4 km', energy:'🏃 High',
+    desc:'High energy. Needs space to run. Loves group walks at Hasenheide. Always up for fetch and water play.',
+    likes:['Fetch','Water','Big groups'], dislikes:['Cats','Tight spaces'],
+    letter:'M', av:'av-teal', dp:'dp2', emoji:'🐩', verified:false, rating:'4.8', walks:'7' },
+  { name:'Julia', dog:'Coco', size:'Small', char:'Shy', loc:'Richardplatz', dist:'1.1 km', energy:'🐢 Low',
+    desc:'Gentle and shy. Needs a slow intro. Prefers one-to-one walks in quiet areas. Telegram linked.',
+    likes:['Quiet walks','Treats','Sniffing'], dislikes:['Crowds','Strangers'],
+    letter:'J', av:'av-orange', dp:'dp3', emoji:'🦮', verified:false, rating:'3.5', walks:'3' },
+  { name:'Sophie', dog:'Milo', size:'Large', char:'Social', loc:'Tempelhofer Feld', dist:'2.1 km', energy:'🏃 High',
+    desc:'Social butterfly. Loves everyone. Morning runs at Tempelhofer Feld. Verified profile. Instagram linked.',
+    likes:['Running','Other dogs','Kids'], dislikes:['Rain','Waiting'],
+    letter:'S', av:'av-purple', dp:'dp4', emoji:'🐶', verified:true, rating:'4.2', walks:'5' },
+  { name:'Anya', dog:'Nyx', size:'Small', char:'Calm', loc:'Körnerpark', dist:'0.3 km', energy:'🐢 Low',
+    desc:'My quiet companion. Loves Körnerpark evenings. Very gentle with other dogs. Prefers calm walking partners.',
+    likes:['Evening walks','Calm dogs','Parks'], dislikes:['Loud dogs','Heat'],
+    letter:'N', av:'av-purple', dp:'dp5', emoji:'🐾', verified:false, rating:'4.5', walks:'8' },
+];
+
+let swipeIndex = 0;
+let swipeDragX = 0;
+let swipeDragging = false;
+let communityView = 'swipe'; // 'swipe' | 'list'
+
+function setCommunityView(view) {
+  communityView = view;
+  document.getElementById('viewSwipe').classList.toggle('on', view === 'swipe');
+  document.getElementById('viewList').classList.toggle('on', view === 'list');
+  document.getElementById('communitySwipeView').style.display = view === 'swipe' ? 'block' : 'none';
+  document.getElementById('communityListView').style.display = view === 'list' ? 'block' : 'none';
+  if (view === 'list') renderCommunityList();
+  if (view === 'swipe') renderSwipeCards();
+}
+
+function buildSwipeCardHTML(p, i) {
+  const verifiedBadge = p.verified ? '<span class="verified-badge" style="font-size:9px;padding:2px 6px;margin-left:2px"><svg viewBox="0 0 12 12" style="width:8px;height:8px;fill:#fff"><path d="M6 1l1.5 2.5L10 4l-2 2 .5 3L6 7.5 3.5 9l.5-3L2 4l2.5-.5z"/></svg></span>' : '';
+  return `
+    <div class="swipe-card" id="swipeCard${i}" style="z-index:${100-i}"
+         ontouchstart="onSwipeTouchStart(event,${i})" ontouchmove="onSwipeTouchMove(event,${i})" ontouchend="onSwipeTouchEnd(event,${i})"
+         onmousedown="onSwipeMouseDown(event,${i})">
+      <div class="swipe-stamp like" id="stampLike${i}">WALK 🐾</div>
+      <div class="swipe-stamp nope" id="stampNope${i}">SKIP</div>
+      <div class="sc-photo ${p.dp}">${p.emoji}</div>
+      <div class="sc-body">
+        <div class="sc-name">${p.name} & ${p.dog} ${verifiedBadge}</div>
+        <div class="sc-location">📍 ${p.loc} · ${p.dist} · ⭐ ${p.rating} · ${p.walks} walks</div>
+        <div class="sc-desc">${p.desc}</div>
+        <div class="tags" style="margin:0 0 8px">
+          <span class="tag blue">${p.size}</span>
+          <span class="tag green">${p.char}</span>
+          <span class="tag yellow">${p.energy}</span>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:10px;font-weight:800;color:var(--muted);margin-bottom:4px">LIKES ❤️</div>
+            <div class="sc-likes">${p.likes.map(l => `<span>${l}</span>`).join('')}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:800;color:var(--muted);margin-bottom:4px">NOPE 🚫</div>
+            <div class="sc-likes sc-dislikes">${p.dislikes.map(l => `<span>${l}</span>`).join('')}</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderSwipeCards() {
+  const stack = document.getElementById('swipeStack');
+  const allProfiles = [...COMMUNITY_PROFILES];
+  
+  // Show cards from current index, render up to 3 visible
+  let html = '';
+  for (let i = Math.min(swipeIndex + 2, allProfiles.length - 1); i >= swipeIndex; i--) {
+    html += buildSwipeCardHTML(allProfiles[i], i);
+  }
+  
+  if (swipeIndex >= allProfiles.length) {
+    stack.innerHTML = `<div class="swipe-empty">
+      <div class="se-ico">🎉</div>
+      <h3>You've seen everyone!</h3>
+      <p>New dog owners join every day. Check back soon or create your own walk to attract matches.</p>
+      <button class="btn btn-solid" style="max-width:220px;margin:0 auto" onclick="swipeIndex=0;renderSwipeCards()">Start over</button>
+    </div>`;
+    document.getElementById('swipeCounter').textContent = '';
+    return;
+  }
+  
+  stack.innerHTML = html;
+  document.getElementById('swipeCounter').textContent = `${swipeIndex + 1} / ${allProfiles.length}`;
+  
+  // Attach mouse drag to current top card
+  attachMouseDrag(swipeIndex);
+}
+
+function attachMouseDrag(idx) {
+  const card = document.getElementById('swipeCard' + idx);
+  if (!card) return;
+  
+  let startX = 0, currentX = 0, dragging = false;
+  
+  card.onmousedown = (e) => {
+    e.preventDefault();
+    startX = e.clientX;
+    dragging = true;
+    card.style.transition = 'none';
+    
+    const onMove = (e2) => {
+      if (!dragging) return;
+      currentX = e2.clientX - startX;
+      card.style.transform = `translateX(${currentX}px) rotate(${currentX * 0.06}deg)`;
+      
+      const likeStamp = document.getElementById('stampLike' + idx);
+      const nopeStamp = document.getElementById('stampNope' + idx);
+      if (likeStamp) likeStamp.style.opacity = Math.min(currentX / 80, 1);
+      if (nopeStamp) nopeStamp.style.opacity = Math.min(-currentX / 80, 1);
+    };
+    
+    const onUp = () => {
+      dragging = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      card.style.transition = '';
+      
+      if (currentX > 90) {
+        doSwipe('right', idx);
+      } else if (currentX < -90) {
+        doSwipe('left', idx);
+      } else {
+        card.style.transform = '';
+        const likeStamp = document.getElementById('stampLike' + idx);
+        const nopeStamp = document.getElementById('stampNope' + idx);
+        if (likeStamp) likeStamp.style.opacity = 0;
+        if (nopeStamp) nopeStamp.style.opacity = 0;
+      }
+    };
+    
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+}
+
+// Touch handlers for mobile
+function onSwipeTouchStart(e, idx) {
+  swipeDragX = e.touches[0].clientX;
+  swipeDragging = true;
+  const card = document.getElementById('swipeCard' + idx);
+  if (card) card.style.transition = 'none';
+}
+function onSwipeTouchMove(e, idx) {
+  if (!swipeDragging) return;
+  const card = document.getElementById('swipeCard' + idx);
+  if (!card) return;
+  const dx = e.touches[0].clientX - swipeDragX;
+  card.style.transform = `translateX(${dx}px) rotate(${dx * 0.06}deg)`;
+  const likeStamp = document.getElementById('stampLike' + idx);
+  const nopeStamp = document.getElementById('stampNope' + idx);
+  if (likeStamp) likeStamp.style.opacity = Math.min(dx / 80, 1);
+  if (nopeStamp) nopeStamp.style.opacity = Math.min(-dx / 80, 1);
+}
+function onSwipeTouchEnd(e, idx) {
+  swipeDragging = false;
+  const card = document.getElementById('swipeCard' + idx);
+  if (!card) return;
+  card.style.transition = '';
+  const m = card.style.transform.match(/translateX\((.+?)px\)/);
+  const dx = m ? parseFloat(m[1]) : 0;
+  if (dx > 90) { doSwipe('right', idx); }
+  else if (dx < -90) { doSwipe('left', idx); }
+  else {
+    card.style.transform = '';
+    const likeStamp = document.getElementById('stampLike' + idx);
+    const nopeStamp = document.getElementById('stampNope' + idx);
+    if (likeStamp) likeStamp.style.opacity = 0;
+    if (nopeStamp) nopeStamp.style.opacity = 0;
+  }
+}
+
+function doSwipe(dir, idx) {
+  const card = document.getElementById('swipeCard' + idx);
+  if (card) card.classList.add(dir === 'right' ? 'gone-right' : 'gone-left');
+  
+  const p = COMMUNITY_PROFILES[idx];
+  
+  if (dir === 'right' && p) {
+    // Show match banner
+    const area = document.getElementById('matchBannerArea');
+    area.innerHTML = `<div class="match-banner">
+      <div style="font-size:40px;margin-bottom:8px">🎉</div>
+      <h3>Walk match!</h3>
+      <p>You and ${p.name} & ${p.dog} want to walk together!</p>
+      <button class="btn btn-primary" style="width:auto;padding:10px 24px;display:inline-block" onclick="openConversation('${p.name} & ${p.dog}');document.getElementById('matchBannerArea').innerHTML=''">Send a message →</button>
+    </div>`;
+    setTimeout(() => { area.innerHTML = ''; }, 5000);
+  }
+  
+  swipeIndex = idx + 1;
+  setTimeout(() => renderSwipeCards(), 350);
+}
+
+function swipeAction(action) {
+  if (swipeIndex >= COMMUNITY_PROFILES.length) return;
+  if (action === 'msg') {
+    const p = COMMUNITY_PROFILES[swipeIndex];
+    if (p) openConversation(p.name + ' & ' + p.dog);
+    return;
+  }
+  doSwipe(action === 'right' ? 'right' : 'left', swipeIndex);
+}
+
+// List view (legacy)
+async function renderCommunityList() {
+  const container = document.getElementById('communityList');
+  let html = '';
+  
+  COMMUNITY_PROFILES.forEach(p => {
+    const fullName = p.name + ' & ' + p.dog;
+    const hasProfile = NPC_PROFILES[fullName];
+    const verifiedBadge = p.verified ? '<span class="verified-badge" style="font-size:9px;padding:2px 6px"><svg viewBox="0 0 12 12" style="width:8px;height:8px;fill:#fff"><path d="M6 1l1.5 2.5L10 4l-2 2 .5 3L6 7.5 3.5 9l.5-3L2 4l2.5-.5z"/></svg>Verified</span>' : '';
+    const clickAction = hasProfile ? `openUserProfile('${fullName.replace(/'/g,"\\'")}')` : `openConversation('${fullName.replace(/'/g,"\\'")}')`;
+    html += `<div class="community-card" onclick="${clickAction}">
+      <div class="avatar ${p.av}">${p.letter}</div>
+      <div class="c-info">
+        <div class="c-name">${p.name} & ${p.dog} ${verifiedBadge}</div>
+        <div class="c-sub">${p.loc} · ${p.dist} · ⭐ ${p.rating}</div>
+        <div class="tags" style="margin:4px 0 0"><span class="tag blue">${p.size}</span><span class="tag green">${p.char}</span></div>
+      </div>
+    </div>`;
+  });
+  
+  // Load shared community profiles
+  try {
+    const keys = await STORAGE.listShared('community:');
+    for (const key of keys) {
+      const profile = await STORAGE.getShared(key);
+      if (profile && profile.ownerName && profile.uid !== MY_PROFILE?.uid) {
+        html += `<div class="community-card" onclick="openConversation('${profile.ownerName} & ${profile.dogName || 'Dog'}')">
+          <div class="avatar av-me">${profile.ownerName[0]}</div>
+          <div class="c-info">
+            <div class="c-name">${profile.ownerName}${profile.dogName ? ' & ' + profile.dogName : ''}</div>
+            <div class="c-sub">${profile.hood || 'Neukölln'} · ${profile.dogSize || ''} · ${profile.dogChar || ''}</div>
+            <div class="tags" style="margin:4px 0 0">
+              ${profile.dogSize ? `<span class="tag blue">${profile.dogSize}</span>` : ''}
+              ${profile.dogChar ? `<span class="tag green">${profile.dogChar}</span>` : ''}
+              <span class="tag yellow">New member</span>
+            </div>
+          </div>
+        </div>`;
+      }
+    }
+  } catch(e) {}
+  
+  if (MY_PROFILE && MY_PROFILE.ownerName) {
+    html += `<div class="community-card" style="border-color:var(--primary);background:var(--primary-soft)" onclick="showScreen('profile')">
+      <div class="avatar av-me">${MY_PROFILE.ownerName[0]}</div>
+      <div class="c-info">
+        <div class="c-name">${MY_PROFILE.ownerName}${MY_PROFILE.dogName ? ' & ' + MY_PROFILE.dogName : ''} <span class="tag yellow" style="margin-left:4px">You</span></div>
+        <div class="c-sub">${MY_PROFILE.hood || 'Neukölln'} · ${MY_PROFILE.dogSize || ''} · ${MY_PROFILE.dogChar || ''}</div>
+      </div>
+    </div>`;
+  }
+  
+  container.innerHTML = html;
+}
+
+async function renderCommunity() {
+  if (communityView === 'swipe') renderSwipeCards();
+  else await renderCommunityList();
+  loadCommunityCount();
+}
+
+// ════════════════════════════════════
+// CHAT: AI-powered conversations
+// ════════════════════════════════════
+function renderConvList() {
+  const container = document.getElementById('convList');
+  let html = '';
+  
+  // Ensure default convos exist
+  DEFAULT_CONVOS.forEach(c => {
+    if (!CONVERSATIONS[c.name]) {
+      CONVERSATIONS[c.name] = { avatar: c.avatar, letter: c.letter, history: c.history, unread: c.unread };
+    }
+  });
+  
+  Object.keys(CONVERSATIONS).forEach(name => {
+    const c = CONVERSATIONS[name];
+    const last = c.history && c.history.length > 0 ? c.history[c.history.length - 1].text : 'Start a conversation';
+    const letter = c.letter || name[0];
+    const avatar = c.avatar || 'av-me';
+    
+    html += `<div class="conv-item" onclick="openChatWith('${name.replace(/'/g,"\\'")}')">
+      <div class="conv-avatar ${avatar}">${letter}</div>
+      <div class="conv-info">
+        <div class="conv-name">${name}</div>
+        <div class="conv-last">${last}</div>
+      </div>
+      ${c.unread ? '<div class="conv-badge"></div>' : ''}
+    </div>`;
+  });
+  
+  if (Object.keys(CONVERSATIONS).length === 0) {
+    html = '<div style="text-align:center;padding:30px;color:var(--muted)"><div style="font-size:36px;margin-bottom:8px">💬</div><p>No conversations yet. Browse the community and message someone!</p></div>';
+  }
+  
+  container.innerHTML = html;
+}
+
+function openChatWith(name) {
+  CURRENT_CHAT = name;
+  
+  // Create conversation if doesn't exist
+  if (!CONVERSATIONS[name]) {
+    const letter = name[0];
+    const avClasses = ['av-orange','av-teal','av-purple'];
+    CONVERSATIONS[name] = { avatar: avClasses[Math.floor(Math.random()*avClasses.length)], letter, history: [], unread: false };
+  }
+  
+  CONVERSATIONS[name].unread = false;
+  STORAGE.set('conversations', CONVERSATIONS);
+  
+  document.getElementById('convListView').style.display = 'none';
+  document.getElementById('chatView').style.display = 'block';
+  document.getElementById('chatTitle').textContent = name;
+  
+  // Render history
+  const chatList = document.getElementById('chatList');
+  chatList.innerHTML = '';
+  (CONVERSATIONS[name].history || []).forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'msg ' + (m.from === 'me' ? 'me' : 'them');
+    div.textContent = m.text;
+    chatList.appendChild(div);
+  });
+  chatList.scrollTop = chatList.scrollHeight;
+}
+
+function backToConvList() {
+  document.getElementById('convListView').style.display = 'block';
+  document.getElementById('chatView').style.display = 'none';
+  CURRENT_CHAT = null;
+  renderConvList();
+}
+
+function openConversation(name) {
+  showScreen('messages');
+  setTimeout(() => openChatWith(name), 50);
+}
+
+async function sendMessage() {
+  const inp = document.getElementById('messageInput');
+  const t = inp.value.trim();
+  if (!t || !CURRENT_CHAT) return;
+  
+  // Add my message
+  const chatList = document.getElementById('chatList');
+  const m = document.createElement('div');
+  m.className = 'msg me';
+  m.textContent = t;
+  chatList.appendChild(m);
+  chatList.scrollTop = chatList.scrollHeight;
+  inp.value = '';
+  
+  // Save to history
+  if (!CONVERSATIONS[CURRENT_CHAT].history) CONVERSATIONS[CURRENT_CHAT].history = [];
+  CONVERSATIONS[CURRENT_CHAT].history.push({ from: 'me', text: t });
+  STORAGE.set('conversations', CONVERSATIONS);
+  
+  // Show typing indicator
+  const typing = document.createElement('div');
+  typing.className = 'msg them typing';
+  typing.textContent = 'typing…';
+  chatList.appendChild(typing);
+  chatList.scrollTop = chatList.scrollHeight;
+  
+  // Get AI reply
+  const reply = await getAIReply(CURRENT_CHAT, t);
+  
+  // Remove typing and add reply
+  typing.remove();
+  const r = document.createElement('div');
+  r.className = 'msg them';
+  r.textContent = reply;
+  chatList.appendChild(r);
+  chatList.scrollTop = chatList.scrollHeight;
+  
+  // Save reply
+  CONVERSATIONS[CURRENT_CHAT].history.push({ from: 'them', text: reply });
+  STORAGE.set('conversations', CONVERSATIONS);
+  
+  // Notification for the reply
+  addLocalNotif(`💬 ${CURRENT_CHAT}`, reply.length > 50 ? reply.slice(0,50)+'…' : reply, '💬');
+}
+
+async function getAIReply(chatName, userMsg) {
+  const persona = NPC_PERSONAS[chatName];
+  
+  // Build context
+  const history = (CONVERSATIONS[chatName]?.history || []).slice(-8);
+  const myInfo = MY_PROFILE ? `The user's name is ${MY_PROFILE.ownerName || 'unknown'}, they have a ${MY_PROFILE.dogSize || ''} dog named ${MY_PROFILE.dogName || 'their dog'} (${MY_PROFILE.dogChar || ''}).` : '';
+  
+  let systemPrompt;
+  if (persona) {
+    systemPrompt = `You are ${chatName.split(' & ')[0]}, a dog owner in Neukölln, Berlin using the PackWalk app. Your dog is ${persona.dog} (${persona.size}, ${persona.char}). Your style: ${persona.style}. Your usual spot: ${persona.location}. ${myInfo} Keep responses short (1-3 sentences), casual, friendly. You're coordinating a dog walk meetup. Answer questions about your dog, availability, location naturally. If asked about meeting up, suggest a specific public spot and time. Never break character. Respond in the same language the user writes to you.`;
+  } else {
+    systemPrompt = `You are a friendly dog owner in Neukölln, Berlin using the PackWalk app. ${myInfo} Keep responses short (1-3 sentences), casual, friendly. You're chatting about meeting up for a dog walk. Respond naturally and helpfully. Respond in the same language the user writes to you.`;
+  }
+  
+  const messages = [];
+  history.forEach(h => {
+    messages.push({ role: h.from === 'me' ? 'user' : 'assistant', content: h.text });
+  });
+  // Make sure last message is from user
+  if (messages.length === 0 || messages[messages.length-1].role !== 'user') {
+    messages.push({ role: 'user', content: userMsg });
+  }
+  
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 200,
+        system: systemPrompt,
+        messages: messages
+      })
+    });
+    
+    const data = await response.json();
+    if (data.content && data.content[0] && data.content[0].text) {
+      return data.content[0].text;
+    }
+  } catch(e) {
+    console.warn('AI reply failed:', e);
+  }
+  
+  // Fallback responses based on persona
+  const fallbacks = persona ? [
+    `Hey! ${persona.dog} would love to meet up! 🐾`,
+    `Sounds great! How about ${persona.location}?`,
+    `${persona.dog} is ready for a walk! What time works for you?`,
+    `Sure! Let's meet at ${persona.location}. ${persona.dog} is calm today 🐕`,
+  ] : [
+    'Sounds great! Where do you usually walk?',
+    'My dog would love that! When are you free?',
+    'Let\'s meet at Körnerpark! 🐾',
+    'Sure! What time works for you?',
+  ];
+  
+  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+}
+
+// ════════════════════════════════════
+// DOG GRID
+// ════════════════════════════════════
+function buildDogGrid() {
+  const grid = document.getElementById('dogGrid');
+  grid.innerHTML = '';
+  DOGS.forEach((d, i) => {
+    const card = document.createElement('div');
+    card.className = 'dcard';
+    card.onclick = () => openDogDetail(i);
+    card.innerHTML = `
+      <div class="dphoto-placeholder ${d.dp}">${d.fallback}</div>
+      <div class="dcbody">
+        <div class="dcname">${d.name}</div>
+        <div class="dcsub">${d.owner} · ${['0.8','1.4','1.1','2.1','0.3'][i]} km</div>
+        <div class="dctags">${d.sub.split('·').map((t,ti)=>`<span class="dct ${ti>0?'g':''}">${t.trim()}</span>`).join('')}</div>
+      </div>`;
+    grid.appendChild(card);
+  });
+  const add = document.createElement('div');
+  add.className = 'dcard';
+  add.onclick = openNewDogProfile;
+  add.innerHTML = `<div class="dphoto-placeholder dp6" style="flex-direction:column;gap:4px"><span style="font-size:30px">＋</span><span style="font-size:11px;font-weight:800;color:#9d680e">Add dog</span></div><div class="dcbody"><div class="dcname">Your dog</div><div class="dcsub">Create profile</div><div class="dctags"><span class="dct y">New</span></div></div>`;
+  grid.appendChild(add);
+}
+
+function openDogDetail(i) {
+  const d = DOGS[i];
+  document.getElementById('galleryList').classList.add('hid');
+  document.getElementById('dogDetail').classList.add('on');
+  document.getElementById('newDogForm').classList.remove('on');
+  document.getElementById('detailTitle').textContent = d.name + ' & ' + d.owner;
+  document.getElementById('detailOwner').textContent = d.owner + ' · Neukölln · ' + d.sub;
+  document.getElementById('detailDesc').textContent = d.desc;
+  document.getElementById('detailImg').style.display = 'none';
+  const fb = document.getElementById('detailImgFallback');
+  fb.className = `dphoto-placeholder ${d.dp}`;
+  fb.textContent = d.fallback;
+  fb.style.display = 'flex';
+  document.getElementById('detailTags').innerHTML = d.sub.split('·').map(t=>`<span class="tag blue">${t.trim()}</span>`).join('');
+  document.getElementById('detailLikes').innerHTML = d.likes.map(l=>`<span class="lchip sl">${l}</span>`).join('');
+  document.getElementById('detailDislikes').innerHTML = d.dislikes.map(l=>`<span class="lchip sd">${l}</span>`).join('');
+}
+
+function openNewDogProfile() {
+  document.getElementById('galleryList').classList.add('hid');
+  document.getElementById('dogDetail').classList.remove('on');
+  document.getElementById('newDogForm').classList.add('on');
+  document.querySelectorAll('#likesChips .lchip,#dislikesChips .lchip').forEach(c=>c.className='lchip');
+  
+  // Reset photo previews
+  _ndAvatarData = null;
+  _ndDogPhotos = [];
+  const avatarPreview = document.getElementById('ndAvatarPreview');
+  const avatarFallback = document.getElementById('ndAvatarFallback');
+  if (avatarPreview) { avatarPreview.style.display = 'none'; }
+  if (avatarFallback) { avatarFallback.style.display = 'flex'; avatarFallback.textContent = '📷'; }
+  document.getElementById('ndPhotoPreviews').innerHTML = '';
+  
+  // Pre-fill from profile if exists
+  if (MY_PROFILE) {
+    document.getElementById('ndOwner').value = MY_PROFILE.ownerName || '';
+    document.getElementById('ndDogName').value = MY_PROFILE.dogName || '';
+    document.getElementById('ndDesc').value = MY_PROFILE.dogDesc || '';
+  }
+}
+
+function closeDetail() {
+  document.getElementById('galleryList').classList.remove('hid');
+  document.getElementById('dogDetail').classList.remove('on');
+  document.getElementById('newDogForm').classList.remove('on');
+}
+
+function toggleChip(el, mode) { el.classList.toggle(mode==='like'?'sl':'sd'); }
+
+// Temp storage for photos during profile creation
+let _ndAvatarData = null;
+let _ndDogPhotos = [];
+
+async function previewNdAvatar(input) {
+  if (!input.files || !input.files[0]) return;
+  _ndAvatarData = await fileToDataURL(input.files[0], 200);
+  const preview = document.getElementById('ndAvatarPreview');
+  const fallback = document.getElementById('ndAvatarFallback');
+  preview.src = _ndAvatarData; preview.style.display = 'block'; fallback.style.display = 'none';
+  input.value = '';
+}
+
+async function previewNdDogPhotos(input) {
+  if (!input.files || input.files.length === 0) return;
+  for (const file of input.files) {
+    if (_ndDogPhotos.length >= 6) break;
+    const dataURL = await fileToDataURL(file, 600);
+    _ndDogPhotos.push(dataURL);
+  }
+  renderNdPhotoPreviews();
+  input.value = '';
+}
+
+function removeNdPhoto(idx) {
+  _ndDogPhotos.splice(idx, 1);
+  renderNdPhotoPreviews();
+}
+
+function renderNdPhotoPreviews() {
+  const container = document.getElementById('ndPhotoPreviews');
+  container.innerHTML = _ndDogPhotos.map((src, i) => `
+    <div style="position:relative;flex:none">
+      <img src="${src}" style="width:64px;height:64px;border-radius:12px;object-fit:cover;border:1px solid var(--line)"/>
+      <button onclick="removeNdPhoto(${i})" style="position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">×</button>
+    </div>
+  `).join('');
+}
+
+function saveProfile() {
+  const ownerName = document.getElementById('ndOwner').value.trim();
+  const dogName = document.getElementById('ndDogName').value.trim();
+  const dogDesc = document.getElementById('ndDesc').value.trim();
+  const dogSize = document.getElementById('ndSize').value;
+  const dogChar = document.getElementById('ndChar').value;
+  const dogEnergy = document.getElementById('ndEnergy').value;
+  
+  const likes = [...document.querySelectorAll('#likesChips .lchip.sl')].map(c=>c.textContent);
+  const dislikes = [...document.querySelectorAll('#dislikesChips .lchip.sd')].map(c=>c.textContent);
+  
+  if (!ownerName) {
+    alert('Please enter your name!');
+    return;
+  }
+  
+  saveMyProfile({
+    ...(MY_PROFILE || {}),
+    ownerName, dogName, dogDesc, dogSize, dogChar, dogEnergy, likes, dislikes,
+    hood: MY_PROFILE?.hood || 'Neukölln',
+    avatarData: _ndAvatarData || MY_PROFILE?.avatarData || null,
+    dogPhotos: _ndDogPhotos.length > 0 ? _ndDogPhotos : (MY_PROFILE?.dogPhotos || [])
+  });
+  
+  // Reset temp photo data
+  _ndAvatarData = null;
+  _ndDogPhotos = [];
+  
+  closeDetail();
+  const s = document.createElement('div');
+  s.className = 'success';
+  s.textContent = '✅ Profile saved! You are now visible to all PackWalk users in the community.';
+  document.getElementById('dogs').insertBefore(s, document.getElementById('galleryList'));
+  setTimeout(()=>s.remove(), 3000);
+}
+
+// ════════════════════════════════════
+// QUICK ONBOARD (single step → app)
+// ════════════════════════════════════
+async function finishOnboard() {
+  const name = document.getElementById('obName').value.trim();
+  const hood = document.getElementById('obHood').value.trim() || 'Neukölln';
+  const dogName = document.getElementById('obDogName').value.trim();
+  const dogSize = document.getElementById('obDogSize').value;
+  const dogChar = document.getElementById('obDogChar').value;
+  const dogEnergy = document.getElementById('obDogEnergy').value;
+  
+  // Show loading screen
+  document.getElementById('quickOnboard').style.display = 'none';
+  const ls = document.getElementById('loadingScreen');
+  ls.style.display = 'flex';
+  const msgs = ['Setting up your profile…','Finding nearby dogs…','Loading ' + (hood || 'Neukölln') + '…'];
+  let mi = 0;
+  const lm = document.getElementById('loadingMsg');
+  const iv = setInterval(() => { mi++; lm.textContent = msgs[mi] || msgs[msgs.length-1]; }, 700);
+  
+  await saveMyProfile({
+    uid: 'user_' + Date.now(),
+    ownerName: name || 'User',
+    hood,
+    dogName,
+    dogSize: dogSize ? dogSize.split('(')[0].trim() : '',
+    dogChar,
+    dogEnergy,
+    dogDesc: '',
+    likes: [],
+    dislikes: []
+  });
+  
+  // Wait for loading animation then show app
+  setTimeout(() => {
+    clearInterval(iv);
+    document.getElementById('authShell').classList.add('out');
+    setTimeout(() => {
+      document.getElementById('authShell').style.display = 'none';
+    }, 400);
+    
+    const app = document.getElementById('appWrapper');
+    app.classList.add('on');
+    
+    
+    buildDogGrid();
+    renderConvList();
+    renderCommunity();
+    renderUserWalks();
+    renderMyWalksInProfile();
+    updateProfileUI();
+    
+    if (MY_PROFILE) {
+      document.getElementById('owner').value = MY_PROFILE.ownerName || '';
+      document.getElementById('dog').value = MY_PROFILE.dogName || '';
+    }
+    
+    setTimeout(()=>{
+      document.getElementById('homeSkel').style.display='none';
+      document.getElementById('homeContent').style.display='block';
+    },800);
+    setTimeout(showPush, 3000);
+    initNotifications();
+    document.getElementById('chatBadge').style.display='flex';
+  }, 2200);
+}
+
+// ════════════════════════════════════
+// PUSH NOTIFICATION
+// ════════════════════════════════════
+function showPush() {
+  const b = document.getElementById('pushBanner');
+  b.classList.add('show');
+  setTimeout(()=>b.classList.remove('show'), 5000);
+}
+function dismissPush() { document.getElementById('pushBanner').classList.remove('show'); }
+
+// ════════════════════════════════════
+// MEETUP CONFIRMATION
+// ════════════════════════════════════
+function openConfirm(name, spot, details) {
+  document.getElementById('confirmSpotName').textContent = spot;
+  document.getElementById('confirmDetails').textContent = details;
+  document.getElementById('confirmScreen').classList.add('on');
+}
+function closeConfirm() { document.getElementById('confirmScreen').classList.remove('on'); }
+function confirmJoin() {
+  closeConfirm();
+  const details = document.getElementById('confirmDetails').textContent;
+  const name = details.split('·')[0].trim();
+  document.getElementById('joinMessage').innerHTML=`<div class="success">✅ You joined a walk with <strong>${name}</strong>. Meeting point confirmed.</div>`;
+  
+  // Create notification for the walk owner (shared storage)
+  const notif = {
+    type: 'join',
+    icon: '🐾',
+    text: `${MY_PROFILE?.ownerName || 'Someone'} joined your walk!`,
+    detail: details,
+    from: MY_PROFILE?.ownerName || 'User',
+    to: name,
+    timestamp: new Date().toISOString(),
+    read: false
+  };
+  const nKey = 'notif:' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  STORAGE.setShared(nKey, notif);
+  
+  // Also add local notification for yourself
+  addLocalNotif('✅ Walk confirmed', `You're walking with ${name}. Check chat for details.`, '🐕');
+  
+  openConversation(name);
+}
+
+// ════════════════════════════════════
+// SCREENS
+// ════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const nb = document.getElementById('nav-'+id);
+  if(nb) nb.classList.add('active');
+  if(id==='map') setTimeout(()=>{ initMap(); if(window._map) window._map.invalidateSize(); },50);
+  if(id==='dogs') closeDetail();
+  if(id==='messages') {
+    document.getElementById('chatBadge').style.display='none';
+    backToConvList();
+  }
+  if(id==='community') renderCommunity();
+}
+
+function logOut() {
+  // Reset app state
+  document.getElementById('appWrapper').classList.remove('on');
+  
+  
+  
+  // Reset auth shell — show the form again, hide loading
+  document.getElementById('authShell').style.display='flex';
+  document.getElementById('authShell').classList.remove('out');
+  document.getElementById('quickOnboard').style.display='flex';
+  document.getElementById('loadingScreen').style.display='none';
+  const splash = document.getElementById('launchSplash');
+  if (splash) splash.style.display='none';
+  
+  // Clear form fields
+  document.getElementById('obName').value='';
+  document.getElementById('obHood').value='';
+  document.getElementById('obDogName').value='';
+  document.getElementById('obDogSize').value='';
+  document.getElementById('obDogChar').value='';
+  document.getElementById('obDogEnergy').value='';
+  document.getElementById('obName').style.borderColor='';
+  
+  // Reset screens to home
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('home').classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('nav-home')?.classList.add('active');
+  
+  // Reset home to skeleton state for next login
+  document.getElementById('homeSkel').style.display='block';
+  document.getElementById('homeContent').style.display='none';
+}
+
+// Safety/Rate/Feedback modals
+function openSafety(){document.getElementById('safetyModal').classList.add('on')}
+function closeSafety(){document.getElementById('safetyModal').classList.remove('on')}
+let _ratingVal=3;
+function openRate(name){
+  document.getElementById('rateWalkName').textContent='How was your walk with '+name+'?';
+  setRating(3);
+  document.getElementById('rateModal').classList.add('on');
+}
+function closeRate(){document.getElementById('rateModal').classList.remove('on')}
+function setRating(n){
+  _ratingVal=n;
+  document.querySelectorAll('#rateStars .star').forEach((s,i)=>{s.classList.toggle('on',i<n);s.classList.toggle('off',i>=n)});
+}
+function submitRate(){
+  closeRate();
+  const s=document.createElement('div'); s.className='success'; s.textContent='⭐ Rating submitted! Thanks for helping the community.';
+  document.getElementById('profile').insertBefore(s,document.getElementById('profile').firstChild);
+  setTimeout(()=>s.remove(),3000);
+}
+function selFb(el){document.querySelectorAll('.fb-opt').forEach(b=>b.classList.remove('sel'));el.classList.add('sel')}
+
+// Settings modal
+function openSettings(){ document.getElementById('settingsModal').classList.add('on'); }
+function closeSettings(){ document.getElementById('settingsModal').classList.remove('on'); }
+function toggleSetting(btn, key) {
+  btn.classList.toggle('on');
+  saveSetting(key, btn.classList.contains('on'));
+}
+function saveSetting(key, val) {
+  STORAGE.set('setting-' + key, val);
+  const el = document.getElementById('settingsSaved');
+  el.innerHTML = '<div class="success" style="padding:8px 12px;font-size:12px">✓ Setting saved</div>';
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 1500);
+}
+async function loadSettings() {
+  const vis = await STORAGE.get('setting-visible');
+  if (vis !== null) document.getElementById('toggleVisible')?.classList.toggle('on', vis);
+  const push = await STORAGE.get('setting-push');
+  if (push !== null) document.getElementById('togglePush')?.classList.toggle('on', push);
+  const radius = await STORAGE.get('setting-radius');
+  if (radius) { const el = document.getElementById('settingRadius'); if (el) el.value = radius; }
+  const time = await STORAGE.get('setting-walktime');
+  if (time) { const el = document.getElementById('settingTime'); if (el) el.value = time; }
+  const lang = await STORAGE.get('setting-lang');
+  if (lang) { const el = document.getElementById('settingLang'); if (el) el.value = lang; applyLanguage(lang); }
+}
+
+// ════════════════════════════════════
+// i18n TRANSLATIONS
+// ════════════════════════════════════
+const I18N={en:{settings_title:'⚙️ Settings',setting_visible:'Visible on map',setting_visible_sub:'Other owners can see you',setting_radius:'Search radius',setting_radius_sub:'Show walkers within…',setting_push:'Push notifications',setting_push_sub:'Walk requests & messages',setting_time:'Walk time preference',setting_time_sub:'When do you usually walk?',setting_lang:'Language',setting_lang_sub:'App display language',time_morning:'Morning',time_afternoon:'Afternoon',time_evening:'Evening',time_any:'Any time',nav_home:'Home',nav_map:'Map',nav_people:'People',nav_chat:'Chat',nav_profile:'Profile',hero_title:'Find a dog walk nearby',hero_desc:'See who is around, join a walk in seconds, or create your own.',btn_join:'Join walk',btn_create:'Create walk',btn_message:'Message',nearby_title:'Nearby right now',open_map:'Open map',quick_actions:'Quick actions',quick_whos:"Who's nearby",quick_whos_sub:'Map with walkers & meetup spots',quick_chat:'Mini chat',quick_chat_sub:'Short messages, easy coordination',quick_community:'Community',quick_community_sub:'Browse & match with real people',quick_safety:'Safety guide',quick_safety_sub:'Tips for safe dog walks & meetups',walkers_nearby:'walkers nearby',walks_title:'Available walks',create_link:'+ Create',create_title:'Create a walk',cancel:'Cancel',create_name:'Your name',create_dog:'Dog name',create_time:'Time',create_distance:'Distance',create_spot:'Meetup spot',create_size:'Dog size',create_char:'Character',create_note:'Short note',create_publish:'Publish walk',map_title:'Map nearby',back:'Back',map_you:'You',map_walkers:'Walkers',map_spots:'Spots',map_food:'Food',map_bars:'Bars',map_cafe:'Café',map_area:'📍 Neukölln area',map_area_sub:'Dog walkers, meetup spots, plus dog-friendly restaurants, bars & cafés nearby.',map_see_walks:'See matching walks',community_title:'Community',home_link:'Home',community_match_title:'Real people, real dogs',community_match_sub:'Everyone here created a profile. Tap to connect and walk together.',messages_title:'Messages',type_message:'Type a message…',send:'Send',profile_title:'My profile',create_profile:'Create a profile',create_profile_sub:'Fill in your details so other dog owners can find and match with you.',my_walks:'🚶 My walks',my_walks_sub:"Walks you've created or joined.",no_walks:'No walks yet.',create_one:'Create one!',rate_title:'⭐ Rate a recent walk',rate_sub:'Completed walks — tap to leave a rating.',rate_btn:'Rate',safety_title:'🛡️ Safety',safety_desc:'Exact home address is never shown. Only public meetup points are visible.',safety_guide:'Safety guide',report_user:'Report user',account:'🚪 Account',sign_out:'Sign out',confirm_title:'Confirm meetup',confirm_spot_sub:'Public meetup spot',confirm_walk_details:'Walk details',confirm_before:'📋 Before you go',confirm_before_sub:'Check the profile, review the social links, and confirm this is a public location.',confirm_cancel:'Cancel',confirm_btn:'✓ Confirm meetup',safety_modal_title:'🛡️ Safety Guide',safety_tip1_title:'Always choose public meetup spots',safety_tip1:'Meet at the marked spots — parks, café entrances, squares. Never at someone\'s home.',safety_tip2_title:'Check the profile before going',safety_tip2:'Review social links, photos, and past walk ratings.',safety_tip3_title:'Dog interaction etiquette',safety_tip3:'Let dogs sniff from a distance first. Keep the leash until both dogs are comfortable.',safety_tip4_title:'Chat before meeting',safety_tip4:'Exchange a few messages first. Any hesitation — trust your gut.',safety_tip5_title:'If something feels wrong',safety_tip5:'Leave calmly. Use the "Report" button. Your safety always comes first.',safety_got_it:'Got it — stay safe 🐾',rate_modal_title:'⭐ Rate this walk',rate_skip:'Skip',rate_submit:'Submit rating',fb_title:'💬 Give feedback',fb_sub:'Help us improve PackWalk. Takes 30 seconds.',fb_bug:'🐛 Bug / issue',fb_idea:'💡 Feature idea',fb_design:'🎨 Design feedback',fb_love:'❤️ Love it!',fb_placeholder:'Tell us more… (optional)',fb_cancel:'Cancel',fb_send:'Send feedback',rp_title:'🚨 Report a user',rp_sub:'Help us keep PackWalk safe.',rp_1:'😟 Uncomfortable behavior',rp_2:'🚫 Fake profile',rp_3:'🐕 Aggressive dog',rp_4:'📍 Wrong location',rp_5:'💬 Inappropriate messages',rp_6:'⚠️ Other concern',rp_which:'Which user? (optional)',rp_select:'Select user…',rp_placeholder:'Tell us what happened… (optional)',rp_cancel:'Cancel',rp_send:'Send report',dogs_title:'Dog profiles',add_yours:'+ Add yours',save_profile:'Save profile',profile_visible_note:'Your profile will be visible to all PackWalk users.',onboard_setup:'Quick setup — 30 seconds',onboard_your_name:'Your name',onboard_hood:'Neighbourhood',onboard_dog_name:"Dog's name",onboard_size:'Dog size',onboard_char:'Character',onboard_go:'Let\'s go 🐾',onboard_terms:'By continuing you agree to our Terms and Privacy Policy.',onboard_visible:'Your profile will be visible to nearby dog owners.'},
+de:{settings_title:'⚙️ Einstellungen',setting_visible:'Auf Karte sichtbar',setting_visible_sub:'Andere Besitzer können dich sehen',setting_radius:'Suchradius',setting_radius_sub:'Zeige Spaziergänger im Umkreis…',setting_push:'Push-Benachrichtigungen',setting_push_sub:'Walk-Anfragen & Nachrichten',setting_time:'Bevorzugte Gehzeit',setting_time_sub:'Wann gehst du normalerweise?',setting_lang:'Sprache',setting_lang_sub:'Anzeigesprache der App',time_morning:'Morgens',time_afternoon:'Nachmittags',time_evening:'Abends',time_any:'Jederzeit',nav_home:'Start',nav_map:'Karte',nav_people:'Leute',nav_chat:'Chat',nav_profile:'Profil',hero_title:'Finde einen Hundespaziergang',hero_desc:'Sieh wer in der Nähe ist, tritt einem Walk bei oder erstelle deinen eigenen.',btn_join:'Mitmachen',btn_create:'Walk erstellen',btn_message:'Nachricht',nearby_title:'Jetzt in der Nähe',open_map:'Karte öffnen',quick_actions:'Schnellaktionen',quick_whos:'Wer ist da?',quick_whos_sub:'Karte mit Spaziergängern & Treffpunkten',quick_chat:'Mini-Chat',quick_chat_sub:'Kurze Nachrichten, einfach koordinieren',quick_community:'Community',quick_community_sub:'Echte Menschen finden & matchen',quick_safety:'Sicherheit',quick_safety_sub:'Tipps für sichere Hundespaziergänge',walkers_nearby:'Spaziergänger in der Nähe',walks_title:'Verfügbare Walks',create_link:'+ Erstellen',create_title:'Walk erstellen',cancel:'Abbrechen',create_name:'Dein Name',create_dog:'Hundename',create_time:'Uhrzeit',create_distance:'Entfernung',create_spot:'Treffpunkt',create_size:'Hundegröße',create_char:'Charakter',create_note:'Kurze Notiz',create_publish:'Walk veröffentlichen',map_title:'Karte',back:'Zurück',map_you:'Du',map_walkers:'Spaziergänger',map_spots:'Orte',map_food:'Essen',map_bars:'Bars',map_cafe:'Café',map_area:'📍 Neukölln Umgebung',map_area_sub:'Hundebesitzer, Treffpunkte, hundefreundliche Restaurants, Bars & Cafés.',map_see_walks:'Passende Walks',community_title:'Community',home_link:'Start',community_match_title:'Echte Menschen, echte Hunde',community_match_sub:'Alle hier haben ein Profil. Tippe um dich zu verbinden.',messages_title:'Nachrichten',type_message:'Nachricht schreiben…',send:'Senden',profile_title:'Mein Profil',create_profile:'Profil erstellen',create_profile_sub:'Fülle deine Daten aus, damit andere dich finden.',my_walks:'🚶 Meine Walks',my_walks_sub:'Walks die du erstellt oder beigetreten bist.',no_walks:'Noch keine Walks.',create_one:'Erstelle einen!',rate_title:'⭐ Walk bewerten',rate_sub:'Abgeschlossene Walks — tippe um zu bewerten.',rate_btn:'Bewerten',safety_title:'🛡️ Sicherheit',safety_desc:'Deine Adresse wird nie angezeigt. Nur öffentliche Treffpunkte.',safety_guide:'Sicherheitshinweise',report_user:'Nutzer melden',account:'🚪 Konto',sign_out:'Abmelden',confirm_title:'Treffen bestätigen',confirm_spot_sub:'Öffentlicher Treffpunkt',confirm_walk_details:'Walk-Details',confirm_before:'📋 Bevor du losgehst',confirm_before_sub:'Prüfe das Profil und bestätige den öffentlichen Ort.',confirm_cancel:'Abbrechen',confirm_btn:'✓ Treffen bestätigen',safety_modal_title:'🛡️ Sicherheitshinweise',safety_tip1_title:'Immer öffentliche Treffpunkte',safety_tip1:'Triff dich an markierten Orten. Nie bei jemandem zu Hause.',safety_tip2_title:'Profil vorher prüfen',safety_tip2:'Schau dir Fotos, Social Links und Bewertungen an.',safety_tip3_title:'Hunde-Etikette',safety_tip3:'Lass die Hunde zuerst schnuppern. Leine anlassen.',safety_tip4_title:'Vorher chatten',safety_tip4:'Tauscht ein paar Nachrichten aus. Bei Unsicherheit — hör auf dein Gefühl.',safety_tip5_title:'Wenn etwas sich falsch anfühlt',safety_tip5:'Geh ruhig weg. Nutze den Melden-Button.',safety_got_it:'Verstanden — bleib sicher 🐾',rate_modal_title:'⭐ Walk bewerten',rate_skip:'Überspringen',rate_submit:'Bewertung senden',fb_title:'💬 Feedback geben',fb_sub:'Hilf uns PackWalk zu verbessern.',fb_bug:'🐛 Fehler',fb_idea:'💡 Feature-Idee',fb_design:'🎨 Design',fb_love:'❤️ Super!',fb_placeholder:'Erzähl uns mehr…',fb_cancel:'Abbrechen',fb_send:'Feedback senden',rp_title:'🚨 Nutzer melden',rp_sub:'Hilf uns PackWalk sicher zu halten.',rp_1:'😟 Unangenehmes Verhalten',rp_2:'🚫 Falsches Profil',rp_3:'🐕 Aggressiver Hund',rp_4:'📍 Falscher Ort',rp_5:'💬 Unangemessene Nachrichten',rp_6:'⚠️ Sonstiges',rp_which:'Welcher Nutzer?',rp_select:'Nutzer wählen…',rp_placeholder:'Was ist passiert?',rp_cancel:'Abbrechen',rp_send:'Meldung senden',dogs_title:'Hundeprofile',add_yours:'+ Hinzufügen',save_profile:'Profil speichern',profile_visible_note:'Dein Profil wird allen Nutzern angezeigt.',onboard_setup:'Schnelle Einrichtung — 30 Sek.',onboard_your_name:'Dein Name',onboard_hood:'Stadtteil',onboard_dog_name:'Name des Hundes',onboard_size:'Hundegröße',onboard_char:'Charakter',onboard_go:"Los geht's 🐾",onboard_terms:'Mit Fortfahren stimmst du unseren AGB zu.',onboard_visible:'Dein Profil wird für Hundebesitzer sichtbar.'},
+ru:{settings_title:'⚙️ Настройки',setting_visible:'Видимость на карте',setting_visible_sub:'Другие владельцы могут вас видеть',setting_radius:'Радиус поиска',setting_radius_sub:'Показывать в радиусе…',setting_push:'Уведомления',setting_push_sub:'Запросы и сообщения',setting_time:'Время прогулки',setting_time_sub:'Когда вы обычно гуляете?',setting_lang:'Язык',setting_lang_sub:'Язык приложения',time_morning:'Утро',time_afternoon:'День',time_evening:'Вечер',time_any:'Любое',nav_home:'Главная',nav_map:'Карта',nav_people:'Люди',nav_chat:'Чат',nav_profile:'Профиль',hero_title:'Найди прогулку рядом',hero_desc:'Смотри кто рядом, присоединяйся или создай свою.',btn_join:'Присоединиться',btn_create:'Создать',btn_message:'Написать',nearby_title:'Рядом сейчас',open_map:'Открыть карту',quick_actions:'Быстрые действия',quick_whos:'Кто рядом?',quick_whos_sub:'Карта с гуляющими и местами встреч',quick_chat:'Мини-чат',quick_chat_sub:'Короткие сообщения, координация',quick_community:'Сообщество',quick_community_sub:'Найди реальных людей рядом',quick_safety:'Безопасность',quick_safety_sub:'Советы для безопасных прогулок',walkers_nearby:'гуляющих рядом',walks_title:'Доступные прогулки',create_link:'+ Создать',create_title:'Создать прогулку',cancel:'Отмена',create_name:'Ваше имя',create_dog:'Кличка собаки',create_time:'Время',create_distance:'Расстояние',create_spot:'Место встречи',create_size:'Размер',create_char:'Характер',create_note:'Заметка',create_publish:'Опубликовать',map_title:'Карта',back:'Назад',map_you:'Вы',map_walkers:'Гуляющие',map_spots:'Места',map_food:'Еда',map_bars:'Бары',map_cafe:'Кафе',map_area:'📍 Нойкёльн',map_area_sub:'Собачники, точки встреч, рестораны, бары и кафе.',map_see_walks:'Показать прогулки',community_title:'Сообщество',home_link:'Главная',community_match_title:'Реальные люди, реальные собаки',community_match_sub:'Все создали профиль. Нажмите чтобы познакомиться.',messages_title:'Сообщения',type_message:'Написать сообщение…',send:'Отправить',profile_title:'Мой профиль',create_profile:'Создать профиль',create_profile_sub:'Заполните данные, чтобы вас нашли.',my_walks:'🚶 Мои прогулки',my_walks_sub:'Созданные и присоединённые прогулки.',no_walks:'Пока нет прогулок.',create_one:'Создайте!',rate_title:'⭐ Оценить прогулку',rate_sub:'Завершённые — нажмите чтобы оценить.',rate_btn:'Оценить',safety_title:'🛡️ Безопасность',safety_desc:'Адрес никогда не показывается. Только публичные точки.',safety_guide:'Безопасность',report_user:'Пожаловаться',account:'🚪 Аккаунт',sign_out:'Выйти',confirm_title:'Подтвердить встречу',confirm_spot_sub:'Публичное место',confirm_walk_details:'Детали прогулки',confirm_before:'📋 Перед выходом',confirm_before_sub:'Проверьте профиль и убедитесь что место публичное.',confirm_cancel:'Отмена',confirm_btn:'✓ Подтвердить',safety_modal_title:'🛡️ Безопасность',safety_tip1_title:'Публичные места',safety_tip1:'Встречайтесь в парках, у кафе. Никогда дома.',safety_tip2_title:'Проверьте профиль',safety_tip2:'Посмотрите фото, соцсети и оценки.',safety_tip3_title:'Этикет с собаками',safety_tip3:'Дайте обнюхаться на расстоянии. Поводок пока не успокоятся.',safety_tip4_title:'Сначала напишите',safety_tip4:'Обменяйтесь сообщениями. Сомневаетесь — доверяйте интуиции.',safety_tip5_title:'Если что-то не так',safety_tip5:'Спокойно уходите. Кнопка «Пожаловаться». Безопасность на первом месте.',safety_got_it:'Понятно 🐾',rate_modal_title:'⭐ Оценить прогулку',rate_skip:'Пропустить',rate_submit:'Отправить',fb_title:'💬 Обратная связь',fb_sub:'Помогите улучшить PackWalk.',fb_bug:'🐛 Ошибка',fb_idea:'💡 Идея',fb_design:'🎨 Дизайн',fb_love:'❤️ Нравится!',fb_placeholder:'Подробнее…',fb_cancel:'Отмена',fb_send:'Отправить',rp_title:'🚨 Жалоба',rp_sub:'Помогите сохранить безопасность.',rp_1:'😟 Неприятное поведение',rp_2:'🚫 Фейк',rp_3:'🐕 Агрессивная собака',rp_4:'📍 Неверное место',rp_5:'💬 Неуместные сообщения',rp_6:'⚠️ Другое',rp_which:'Пользователь (необязательно)',rp_select:'Выберите…',rp_placeholder:'Что случилось?',rp_cancel:'Отмена',rp_send:'Отправить жалобу',dogs_title:'Профили собак',add_yours:'+ Добавить',save_profile:'Сохранить',profile_visible_note:'Профиль виден всем пользователям.',onboard_setup:'Быстрая настройка — 30 сек.',onboard_your_name:'Ваше имя',onboard_hood:'Район',onboard_dog_name:'Кличка собаки',onboard_size:'Размер',onboard_char:'Характер',onboard_go:'Поехали 🐾',onboard_terms:'Продолжая, вы соглашаетесь с Условиями.',onboard_visible:'Профиль будет виден собачникам рядом.'}};
+let currentLang='en';
+function changeLanguage(lang){currentLang=lang;saveSetting('lang',lang);applyLanguage(lang);}
+function applyLanguage(lang){
+  const t=I18N[lang]||I18N.en;
+  // data-i18n
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.getAttribute('data-i18n');if(t[k])el.textContent=t[k];});
+  document.querySelectorAll('[data-i18n-opt]').forEach(el=>{const k=el.getAttribute('data-i18n-opt');if(t[k])el.textContent=t[k];});
+  // Nav
+  const nM={home:'nav_home',map:'nav_map',community:'nav_people',messages:'nav_chat',profile:'nav_profile'};
+  Object.entries(nM).forEach(([id,key])=>{const btn=document.getElementById('nav-'+id);if(!btn||!t[key])return;[...btn.childNodes].forEach(n=>{if(n.nodeType===3&&n.textContent.trim())n.textContent='\n        '+t[key]+'\n      ';});});
+  // Hero
+  const hH=document.querySelector('.hero h3');if(hH)hH.textContent=t.hero_title;
+  const hP=document.querySelector('.hero p');if(hP)hP.textContent=t.hero_desc;
+  const hB=document.querySelectorAll('.hero-actions .btn');if(hB[0])hB[0].textContent=t.btn_join;if(hB[1])hB[1].textContent=t.btn_create;
+  // Section headers
+  const hMap={'Nearby right now':'nearby_title','Quick actions':'quick_actions','Available walks':'walks_title','Create a walk':'create_title','My profile':'profile_title','Messages':'messages_title','Community':'community_title','Map nearby':'map_title','Dog profiles':'dogs_title'};
+  document.querySelectorAll('.sh h2').forEach(h=>{const o=h.getAttribute('data-orig')||h.textContent.trim();h.setAttribute('data-orig',o);if(hMap[o]&&t[hMap[o]])h.textContent=t[hMap[o]];});
+  // Section links
+  document.querySelectorAll('.sh a').forEach(a=>{const o=a.getAttribute('data-orig')||a.textContent.trim();a.setAttribute('data-orig',o);const lM={'Open map':'open_map','Back':'back','Home':'home_link','Cancel':'cancel','+ Create':'create_link','+ Add yours':'add_yours','← Back':'back'};if(lM[o]&&t[lM[o]])a.textContent=t[lM[o]];});
+  // Quick cards
+  const qc=document.querySelectorAll('.qcard'),qk=[['quick_whos','quick_whos_sub'],['quick_chat','quick_chat_sub'],['quick_community','quick_community_sub'],['quick_safety','quick_safety_sub']];
+  qc.forEach((c,i)=>{if(!qk[i])return;const h=c.querySelector('h4');if(h)h.textContent=t[qk[i][0]];const p=c.querySelector('p');if(p)p.textContent=t[qk[i][1]];});
+  // Status pill
+  const pill=document.getElementById('nearbyPill');if(pill){const n=pill.textContent.match(/\d+/);if(n)pill.textContent=n[0]+' '+t.walkers_nearby;}
+  // Map legend
+  const legs=document.querySelectorAll('.map-legend .leg'),lk=['map_you','map_walkers','map_spots','map_food','map_bars','map_cafe'];
+  legs.forEach((l,i)=>{if(!lk[i]||!t[lk[i]])return;[...l.childNodes].find(n=>n.nodeType===3&&(n.textContent=t[lk[i]]));});
+  // Map card
+  const mc=document.querySelector('#map .card');if(mc){const h=mc.querySelector('h3');if(h)h.textContent=t.map_area;const p=mc.querySelector('p');if(p)p.textContent=t.map_area_sub;const b=mc.querySelector('.btn');if(b)b.textContent=t.map_see_walks;}
+  // Create labels
+  document.querySelectorAll('#create .input-card label').forEach(l=>{const o=l.getAttribute('data-orig')||l.textContent.trim();l.setAttribute('data-orig',o);const m={'Your name':'create_name','Dog name':'create_dog','Time':'create_time','Distance':'create_distance','Meetup spot':'create_spot','Dog size':'create_size','Character':'create_char','Short note':'create_note'};if(m[o]&&t[m[o]])l.textContent=t[m[o]];});
+  const pb=document.querySelector('#create .btn-solid');if(pb)pb.textContent=t.create_publish;
+  // Profile cards
+  document.querySelectorAll('#profile .card').forEach(card=>{const h=card.querySelector('h3');if(!h)return;const o=h.getAttribute('data-orig')||h.textContent.trim();h.setAttribute('data-orig',o);const m={'🚶 My walks':'my_walks','⭐ Rate a recent walk':'rate_title','🛡️ Safety':'safety_title','🚪 Account':'account'};if(m[o]&&t[m[o]])h.textContent=t[m[o]];const p=card.querySelector('p');if(p){const po=p.getAttribute('data-orig')||p.textContent.trim();p.setAttribute('data-orig',po);const pm={"Walks you've created or joined.":'my_walks_sub','Completed walks — tap to leave a rating.':'rate_sub','Exact home address is never shown. Only public meetup points are visible.':'safety_desc'};if(pm[po]&&t[pm[po]])p.textContent=t[pm[po]];}});
+  // CTA
+  const cta=document.getElementById('profileEmpty');if(cta){const h=cta.querySelector('h3');if(h)h.textContent=t.create_profile;const p=cta.querySelector('p');if(p)p.textContent=t.create_profile_sub;const b=cta.querySelector('.btn');if(b)b.textContent=t.create_profile;}
+  // Profile btns
+  const sg=document.querySelector('#profile .btn-soft[onclick="openSafety()"]');if(sg)sg.textContent=t.safety_guide;
+  const rp=document.querySelector('#profile .btn-warning[onclick="openReport()"]');if(rp)rp.textContent=t.report_user;
+  const so=document.querySelector('#profile .btn-ghost[onclick="logOut()"]');if(so)so.textContent=t.sign_out;
+  // All Join/Message btns
+  document.querySelectorAll('.row .btn-solid').forEach(b=>{const o=b.getAttribute('data-orig')||b.textContent.trim();if(o==='Join walk'){b.setAttribute('data-orig','Join walk');b.textContent=t.btn_join;}});
+  document.querySelectorAll('.row .btn-soft').forEach(b=>{const o=b.getAttribute('data-orig')||b.textContent.trim();if(o==='Message'){b.setAttribute('data-orig','Message');b.textContent=t.btn_message;}});
+  // Confirm modal
+  const cm=document.getElementById('confirmScreen');if(cm){const h=cm.querySelector('h2');if(h)h.textContent=t.confirm_title;cm.querySelectorAll('.card h3').forEach(h=>{const o=h.getAttribute('data-orig')||h.textContent.trim();h.setAttribute('data-orig',o);if(o==='Walk details')h.textContent=t.confirm_walk_details;if(o==='📋 Before you go')h.textContent=t.confirm_before;});cm.querySelectorAll('.card p').forEach(p=>{const o=p.getAttribute('data-orig')||p.textContent.trim();p.setAttribute('data-orig',o);if(o.startsWith('Check the profile'))p.textContent=t.confirm_before_sub;});cm.querySelectorAll('.btn').forEach(b=>{if(b.classList.contains('btn-ghost'))b.textContent=t.confirm_cancel;if(b.classList.contains('btn-solid')&&(b.textContent.includes('Confirm')||b.getAttribute('data-orig')?.includes('Confirm'))){b.setAttribute('data-orig','✓ Confirm meetup');b.textContent=t.confirm_btn;}});}
+  // Safety modal
+  const sm=document.getElementById('safetyModal');if(sm){const h=sm.querySelector('.safety-header h3');if(h)h.textContent=t.safety_modal_title;const tips=sm.querySelectorAll('.safety-tip'),tk=[['safety_tip1_title','safety_tip1'],['safety_tip2_title','safety_tip2'],['safety_tip3_title','safety_tip3'],['safety_tip4_title','safety_tip4'],['safety_tip5_title','safety_tip5']];tips.forEach((tip,i)=>{if(!tk[i])return;const tt=tip.querySelector('.stip-title');if(tt)tt.textContent=t[tk[i][0]];const tx=tip.querySelector('.stip-text');if(tx)tx.textContent=t[tk[i][1]];});const gb=sm.querySelector('.btn-solid');if(gb)gb.textContent=t.safety_got_it;}
+  // Rate modal
+  const rm=document.getElementById('rateModal');if(rm){const h=rm.querySelector('h3');if(h)h.textContent=t.rate_modal_title;rm.querySelectorAll('.btn').forEach(b=>{if(b.classList.contains('btn-ghost'))b.textContent=t.rate_skip;if(b.classList.contains('btn-solid'))b.textContent=t.rate_submit;});}
+  // Feedback modal
+  // Report modal
+  const rmo=document.getElementById('reportModal');if(rmo){const h=rmo.querySelector('h3');if(h)h.textContent=t.rp_title;const p=rmo.querySelector('p');if(p)p.textContent=t.rp_sub;const opts=rmo.querySelectorAll('.fb-opt');[t.rp_1,t.rp_2,t.rp_3,t.rp_4,t.rp_5,t.rp_6].forEach((v,i)=>{if(opts[i])opts[i].textContent=v;});const lbl=rmo.querySelector('label');if(lbl)lbl.textContent=t.rp_which;const sel=rmo.querySelector('select option:first-child');if(sel)sel.textContent=t.rp_select;const ta=rmo.querySelector('textarea');if(ta)ta.placeholder=t.rp_placeholder;rmo.querySelectorAll('.btn').forEach(b=>{if(b.classList.contains('btn-ghost'))b.textContent=t.rp_cancel;if(b.classList.contains('btn-solid'))b.textContent=t.rp_send;});}
+  // Chat
+  const mi=document.getElementById('messageInput');if(mi)mi.placeholder=t.type_message;
+  const sb=document.querySelector('#chatView .btn-accent');if(sb)sb.textContent=t.send;
+  // Community banner
+  const cb=document.querySelector('#community .db');if(cb){const dt=cb.querySelector('.db-title');if(dt)dt.textContent=t.community_match_title;const dd=cb.querySelector('.db-desc');if(dd)dd.textContent=t.community_match_sub;}
+  // Onboard
+  const ob=document.getElementById('quickOnboard');if(ob){ob.querySelectorAll('label').forEach(l=>{const o=l.getAttribute('data-orig')||l.textContent.trim();l.setAttribute('data-orig',o);const m={'Your name':'onboard_your_name','Neighbourhood':'onboard_hood',"Dog's name":'onboard_dog_name','Dog size':'onboard_size','Character':'onboard_char'};if(m[o]&&t[m[o]])l.textContent=t[m[o]];});const gb=ob.querySelector('.ob-next');if(gb)gb.textContent=t.onboard_go;const setup=ob.querySelector('div[style*="font-size:16px"]');if(setup)setup.textContent=t.onboard_setup;const tp=ob.querySelector('p:last-of-type');if(tp){tp.setAttribute('data-orig','terms');tp.innerHTML=t.onboard_terms+'<br>'+t.onboard_visible;}}
+}
+
+// Report user
+function openReport(userName){
+  if(userName) document.getElementById('reportUser').value = userName;
+  document.getElementById('reportModal').classList.add('on');
+}
+function closeReport(){ document.getElementById('reportModal').classList.remove('on'); }
+function selReport(el){ document.querySelectorAll('#reportOpts .fb-opt').forEach(b=>b.classList.remove('sel')); el.classList.add('sel'); }
+async function submitReport(){
+  // Collect data
+  const category = document.querySelector('#reportOpts .fb-opt.sel')?.textContent || 'General';
+  const reportedUser = document.getElementById('reportUser').value || '';
+  const text = document.getElementById('reportText').value?.trim() || '';
+  
+  // Save to shared storage
+  const entry = {
+    type: 'report',
+    category,
+    reportedUser,
+    text,
+    user: MY_PROFILE?.ownerName || 'Anonymous',
+    timestamp: new Date().toISOString()
+  };
+  const key = 'report:' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  await STORAGE.setShared(key, entry);
+  
+  closeReport();
+  document.querySelectorAll('#reportOpts .fb-opt').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('reportText').value='';
+  document.getElementById('reportUser').value='';
+  const s=document.createElement('div'); s.className='success'; s.style.background='#fff0f0'; s.style.borderColor='#ffc9c9'; s.style.color='#a33';
+  s.textContent='🚨 Report submitted. Our safety team will review it within 24 hours.';
+  const content=document.querySelector('#appWrapper .content .screen.active');
+  if(content) content.insertBefore(s,content.firstChild);
+  setTimeout(()=>s.remove(),4500);
+}
+
+// ════════════════════════════════════
+// NOTIFICATIONS
+// ════════════════════════════════════
+let localNotifs = [];
+
+function addLocalNotif(text, detail, icon) {
+  localNotifs.unshift({ text, detail, icon: icon || '🔔', timestamp: new Date().toISOString(), read: false });
+  updateNotifBadge();
+}
+
+function updateNotifBadge() {
+  const badge = document.getElementById('notifBadge');
+  const unread = localNotifs.filter(n => !n.read).length;
+  if (unread > 0) {
+    badge.textContent = unread > 9 ? '9+' : unread;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function openNotifications() {
+  // Mark all as read
+  localNotifs.forEach(n => n.read = true);
+  updateNotifBadge();
+  
+  // Also load shared notifications meant for us
+  loadSharedNotifs().then(() => {
+    renderNotifList();
+    document.getElementById('notifModal').classList.add('on');
+  });
+}
+
+function closeNotifications() { document.getElementById('notifModal').classList.remove('on'); }
+
+async function loadSharedNotifs() {
+  try {
+    const keys = await STORAGE.listShared('notif:');
+    for (const key of keys) {
+      const n = await STORAGE.getShared(key);
+      if (!n) continue;
+      // Show notifications where someone joined a walk (from others)
+      const isForMe = n.to && MY_PROFILE && n.to.includes(MY_PROFILE.ownerName);
+      const isFromOther = n.from !== (MY_PROFILE?.ownerName || '');
+      if (isForMe || isFromOther) {
+        // Avoid duplicates
+        const exists = localNotifs.some(ln => ln._key === key);
+        if (!exists) {
+          localNotifs.unshift({ text: n.text, detail: n.detail || '', icon: n.icon || '🔔', timestamp: n.timestamp, read: true, _key: key });
+        }
+      }
+    }
+  } catch(e) {}
+}
+
+function renderNotifList() {
+  const container = document.getElementById('notifList');
+  if (localNotifs.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)"><div style="font-size:36px;margin-bottom:8px">🔔</div><p style="font-size:13px">No notifications yet</p></div>';
+    return;
+  }
+  
+  container.innerHTML = localNotifs.map(n => {
+    const date = new Date(n.timestamp);
+    const ago = getTimeAgo(date);
+    return `<div class="notif-item ${n.read ? '' : 'unread'}">
+      <div class="notif-ico" style="background:var(--primary-soft)">${n.icon}</div>
+      <div class="notif-body">
+        <div class="notif-text">${n.text}</div>
+        ${n.detail ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${n.detail}</div>` : ''}
+        <div class="notif-time">${ago}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getTimeAgo(date) {
+  const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  return date.toLocaleDateString();
+}
+
+function clearNotifications() {
+  localNotifs = [];
+  updateNotifBadge();
+  renderNotifList();
+}
+
+// Generate a welcome notification on first load
+function initNotifications() {
+  if (localNotifs.length === 0) {
+    addLocalNotif('Welcome to PackWalk! 🐾', 'Create a profile and find dog walkers near you.', '👋');
+    addLocalNotif('Anna & Luna are nearby', 'Körnerpark · Today 18:30 · 0.8 km away', '🐕');
+  }
+}
+
+// ════════════════════════════════════
+// ADMIN PANEL (triple-tap logo)
+// ════════════════════════════════════
+let adminTaps = 0;
+let adminTapTimer = null;
+function adminTap() {
+  adminTaps++;
+  clearTimeout(adminTapTimer);
+  adminTapTimer = setTimeout(() => { adminTaps = 0; }, 800);
+  if (adminTaps >= 3) {
+    adminTaps = 0;
+    openAdmin();
+  }
+}
+function openAdmin() {
+  document.getElementById('adminModal').classList.add('on');
+  loadAdminTab('feedback');
+}
+function closeAdmin() { document.getElementById('adminModal').classList.remove('on'); }
+
+async function loadAdminTab(tab) {
+  const container = document.getElementById('adminContent');
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Loading…</div>';
+  
+  // Update tab button styles
+  const btns = document.querySelectorAll('#adminModal .settings-body > div:first-child .btn');
+  btns[0].className = 'btn ' + (tab==='feedback' ? 'btn-solid' : 'btn-soft');
+  btns[1].className = 'btn ' + (tab==='reports' ? 'btn-solid' : 'btn-soft');
+  
+  const prefix = tab === 'feedback' ? 'feedback:' : 'report:';
+  let keys = [];
+  try { keys = await STORAGE.listShared(prefix); } catch(e) {}
+  
+  if (keys.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted)"><div style="font-size:36px;margin-bottom:8px">${tab==='feedback'?'💬':'🚨'}</div><p>No ${tab} yet.</p></div>`;
+    return;
+  }
+  
+  // Load all entries
+  let entries = [];
+  for (const key of keys) {
+    try {
+      const data = await STORAGE.getShared(key);
+      if (data) entries.push({ ...data, _key: key });
+    } catch(e) {}
+  }
+  
+  // Sort newest first
+  entries.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+  
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">${entries.length} ${tab}(s) total</div>`;
+  
+  entries.forEach(e => {
+    const date = new Date(e.timestamp);
+    const timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    const isReport = e.type === 'report';
+    
+    html += `<div style="background:${isReport?'#fff8f8':'var(--bg)'};border:1px solid ${isReport?'#ffe0e0':'var(--line)'};border-radius:16px;padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:800">${e.user || 'Anonymous'}${e.dog ? ' & '+e.dog : ''}</div>
+        <div style="font-size:11px;color:var(--muted)">${timeStr}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+        <span class="tag ${isReport?'red':'blue'}">${e.category}</span>
+        ${e.reportedUser ? `<span class="tag yellow">→ ${e.reportedUser}</span>` : ''}
+        ${e.lang ? `<span class="tag green">${e.lang}</span>` : ''}
+      </div>
+      ${e.text ? `<div style="font-size:13px;line-height:1.5;color:var(--text)">${e.text}</div>` : '<div style="font-size:12px;color:var(--muted);font-style:italic">No additional text</div>'}
+    </div>`;
+  });
+  
+  container.innerHTML = html;
+}
+
+async function clearAdminData() {
+  if (!confirm('Delete all feedback and reports? This cannot be undone.')) return;
+  try {
+    const fbKeys = await STORAGE.listShared('feedback:');
+    for (const k of fbKeys) {
+      if (_hasClaudeStorage) { await window.storage.delete(k, true); }
+      else { localStorage.removeItem('pw_s_' + k); }
+    }
+    const rpKeys = await STORAGE.listShared('report:');
+    for (const k of rpKeys) {
+      if (_hasClaudeStorage) { await window.storage.delete(k, true); }
+      else { localStorage.removeItem('pw_s_' + k); }
+    }
+  } catch(e) {}
+  loadAdminTab('feedback');
+}
+
+// ════════════════════════════════════
+// MAP
+// ════════════════════════════════════
+let mapInit=false;
+function initMap() {
+  if(mapInit) return; mapInit=true;
+  const map=L.map('leaflet-map',{center:[52.4827,13.4316],zoom:15,zoomControl:false,attributionControl:true});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',subdomains:'abcd',maxZoom:19}).addTo(map);
+  L.control.zoom({position:'bottomright'}).addTo(map);
+
+  const s=document.createElement('style');
+  s.textContent=`@keyframes pulse{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.8);opacity:0}}`;
+  document.head.appendChild(s);
+
+  const meIco=L.divIcon({className:'',html:`<div style="position:relative;width:24px;height:24px;display:flex;align-items:center;justify-content:center"><div style="position:absolute;width:24px;height:24px;border-radius:50%;background:rgba(66,133,244,.2);animation:pulse 2s infinite"></div><div style="width:14px;height:14px;border-radius:50%;background:#4285F4;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);position:relative;z-index:1"></div></div>`,iconAnchor:[12,12],popupAnchor:[0,-14]});
+  const bubIco=(e,l,c)=>L.divIcon({className:'',html:`<div class="gm-bub"><div class="bub ${c}">${e} ${l}</div><div class="bubtail"></div></div>`,iconAnchor:[40,34],popupAnchor:[0,-34]});
+
+  L.marker([52.4827,13.4316],{icon:meIco}).addTo(map).bindPopup(`<div class="popup-inner"><h4>📍 Your location</h4><p>Hermannplatz, Neukölln</p></div>`);
+  L.marker([52.4748,13.4277],{icon:bubIco('🐕','Anna & Luna','gr')}).addTo(map).bindPopup(`<div class="popup-inner"><h4>Anna & Luna</h4><p>Körnerpark · Today 18:30</p></div><button class="popup-action" onclick="openConfirm('Anna & Luna','Körnerpark entrance','Anna & Luna · Today 18:30 · Small dog · Friendly')">Join walk</button>`);
+  L.marker([52.4874,13.4198],{icon:bubIco('🐩','Max & Bruno','ye')}).addTo(map).bindPopup(`<div class="popup-inner"><h4>Max & Bruno</h4><p>Hasenheide · Today 19:00</p></div><button class="popup-action" onclick="openConfirm('Max & Bruno','Volkspark Hasenheide','Max & Bruno · Today 19:00 · Medium dog · Playful')">Join walk</button>`);
+  L.marker([52.4761,13.4429],{icon:bubIco('🦮','Julia & Coco','re')}).addTo(map).bindPopup(`<div class="popup-inner"><h4>Julia & Coco</h4><p>Richardplatz · Today 20:00</p></div><button class="popup-action" onclick="openConfirm('Julia & Coco','Richardplatz – fountain','Julia & Coco · Today 20:00 · Small dog · Shy')">Join walk</button>`);
+
+  const spotIco=n=>L.divIcon({className:'',html:`<div style="background:#ff9500;color:#fff;font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.3);border:1.5px solid #fff">${n}</div>`,iconAnchor:[16,14],popupAnchor:[0,-16]});
+  const spots=[
+    {lat:52.4874,lng:13.4198,name:'Volkspark Hasenheide',note:'Dog meadow area.'},
+    {lat:52.4730,lng:13.3980,name:'Tempelhofer Feld',note:'Off-leash running.'},
+    {lat:52.4748,lng:13.4277,name:'Körnerpark',note:'Quiet and elegant.'},
+    {lat:52.4761,lng:13.4429,name:'Richardplatz',note:'Café nearby.'},
+    {lat:52.4827,lng:13.4316,name:'Hermannplatz',note:'Central hub.'},
+    {lat:52.4790,lng:13.4350,name:'Pflügerstraße Café',note:'Dog-friendly.'},
+    {lat:52.4810,lng:13.4260,name:'Rixdorfer Teich',note:'Pond park.'},
+    {lat:52.4855,lng:13.4380,name:'Bürgerpark',note:'Open lawn.'},
+    {lat:52.4700,lng:13.4200,name:'Britzer Garten',note:'Large garden.'},
+    {lat:52.4780,lng:13.4480,name:'Lessingplatz',note:'Good for shy dogs.'},
+  ];
+  spots.forEach((s,i)=>L.marker([s.lat,s.lng],{icon:spotIco(i+1)}).addTo(map).bindPopup(`<div class="popup-inner"><h4>${s.name}</h4><p>${s.note}</p></div>`));
+
+  // ── Bars, restaurants, cafés (Google Maps style POIs) ──
+  const poiIco=(emoji,bg)=>L.divIcon({className:'',html:`<div style="background:${bg};width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,.25);border:2px solid #fff">${emoji}</div>`,iconAnchor:[13,13],popupAnchor:[0,-16]});
+
+  const pois=[
+    // Restaurants
+    {lat:52.4835,lng:13.4290,name:'Lavanderia Vecchia',type:'Restaurant',note:'Italian fine dining. Dog-friendly terrace.',emoji:'🍽️',bg:'#ea4335',rating:'4.6'},
+    {lat:52.4805,lng:13.4365,name:'Sahara Imbiss',type:'Restaurant',note:'Middle Eastern street food. Outdoor seating.',emoji:'🍽️',bg:'#ea4335',rating:'4.3'},
+    {lat:52.4770,lng:13.4310,name:'Kiez Döner',type:'Restaurant',note:'Best döner in Neukölln. Quick & cheap.',emoji:'🍽️',bg:'#ea4335',rating:'4.5'},
+    {lat:52.4850,lng:13.4240,name:'Lode & Stijn',type:'Restaurant',note:'Modern European. Garden terrace, dog-ok.',emoji:'🍽️',bg:'#ea4335',rating:'4.7'},
+    {lat:52.4720,lng:13.4340,name:'Sushi Miyaki',type:'Restaurant',note:'Japanese. Small but excellent. No terrace.',emoji:'🍽️',bg:'#ea4335',rating:'4.4'},
+    // Bars
+    {lat:52.4842,lng:13.4330,name:'Ä Bar',type:'Bar',note:'Craft cocktails. Cozy, dog-friendly inside.',emoji:'🍸',bg:'#9c27b0',rating:'4.5'},
+    {lat:52.4795,lng:13.4280,name:'Tier',type:'Bar',note:'Natural wines. Quiet backyard garden.',emoji:'🍷',bg:'#9c27b0',rating:'4.4'},
+    {lat:52.4815,lng:13.4400,name:'Lager Lager',type:'Bar',note:'Craft beer bar. Dogs welcome.',emoji:'🍺',bg:'#9c27b0',rating:'4.2'},
+    {lat:52.4860,lng:13.4310,name:'Syndikat',type:'Bar',note:'Legendary neighbourhood pub. Cash only.',emoji:'🍺',bg:'#9c27b0',rating:'4.0'},
+    // Cafés
+    {lat:52.4822,lng:13.4350,name:'Five Elephant',type:'Café',note:'Specialty coffee & cheesecake. Dog-friendly.',emoji:'☕',bg:'#ff9800',rating:'4.7'},
+    {lat:52.4780,lng:13.4250,name:'Concierge Coffee',type:'Café',note:'Tiny espresso bar. Outdoor bench only.',emoji:'☕',bg:'#ff9800',rating:'4.5'},
+    {lat:52.4755,lng:13.4380,name:'Two & Two',type:'Café',note:'Brunch spot. Garden with water bowls for dogs.',emoji:'☕',bg:'#ff9800',rating:'4.3'},
+    {lat:52.4840,lng:13.4190,name:'Isla Coffee',type:'Café',note:'Zero-waste coffee. Small terrace.',emoji:'☕',bg:'#ff9800',rating:'4.6'},
+    {lat:52.4800,lng:13.4440,name:'Populus Coffee',type:'Café',note:'Spacious. Laptop-friendly. Dogs welcome.',emoji:'☕',bg:'#ff9800',rating:'4.4'},
+  ];
+
+  pois.forEach(p=>{
+    const dogNote = (p.note.toLowerCase().includes('dog')) ? '<span style="color:#27c2a3;font-weight:700">🐾 Dog-friendly</span> · ' : '';
+    L.marker([p.lat,p.lng],{icon:poiIco(p.emoji,p.bg)}).addTo(map).bindPopup(
+      `<div class="popup-inner"><h4>${p.emoji} ${p.name}</h4><p>${p.type} · ⭐ ${p.rating}</p><p style="margin-top:4px">${dogNote}${p.note}</p></div>`
+    );
+  });
+
+  setTimeout(()=>map.invalidateSize(),100);
+  window._map=map;
+}
+
+// ════════════════════════════════════
+// BOOT
+// ════════════════════════════════════
+loadSavedData();
+loadSettings();
+</script>
+</body>
+</html>
